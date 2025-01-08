@@ -38,4 +38,7 @@ npm run build && npm link
 uma-db-stuff --help
 ```
 
+The `path` argument of the `extractAssetBundles` and `extractCri` commands should be a path that exists in the meta database (e.g., `sound/l/1001`), not the actual file path.  
+This is to search for asset entries in the meta database that match the path argument and process the hit assets.
+
 For more information on each command, see `uma-db-stuff <command> --help`.
