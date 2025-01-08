@@ -1,8 +1,12 @@
 {
   "name": "uma-db-stuff",
   "version": "0.0.1",
+  "description": "A set of experimental scripts to process Umamusume Pretty Derby game assets and database files",
   "main": "dist/main.js",
   "type": "module",
+  "bin": {
+    "uma-db-stuff": "dist/main.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx biome format --write src && npx tsc",
@@ -10,7 +14,6 @@
   },
   "author": "daydreamer-json <atarakima1@icloud.com> (https://github.com/daydreamer-json)",
   "license": "AGPL-3.0-or-later",
-  "description": "",
   "dependencies": {
     "@mongodb-js/zstd": "^2.0.0",
     "ansi-colors": "^4.1.3",

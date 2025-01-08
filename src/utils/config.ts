@@ -12,6 +12,7 @@ type ConfigType = AllRequired<
     file: {
       assetStudioCliPath: string;
       vgmstreamCliPath: string;
+      ffmpegCliPath: string;
       flacCliPath: string;
       soxCliPath: string;
       assetDir: string;

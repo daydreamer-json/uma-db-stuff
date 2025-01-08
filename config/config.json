@@ -2,6 +2,7 @@
   "file": {
     "assetStudioCliPath": "./bin/assetstudio/AssetStudioModCLI.exe",
     "vgmstreamCliPath": "./bin/vgmstream/vgmstream-cli.exe",
+    "ffmpegCliPath": "./bin/ffmpeg/ffmpeg.exe",
     "flacCliPath": "./bin/flac.exe",
     "soxCliPath": "./bin/sox.exe",
     "assetDir": "D:/Games/Umamusume/Cygames/umamusume/dat",

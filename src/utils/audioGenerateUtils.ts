@@ -208,6 +208,7 @@ async function processAudio(
     right3: number | null;
   },
 ) {
+  await fs.promises.rm(path.join(argvUtils.getArgv().outputDir, 'mixAudio', 'tmp'), { recursive: true, force: true });
   const positionList = Object.entries(musicScoreData.part.availableTrack)
     .filter((entry) => entry[1] === true)
     .map((entry) => entry[0]) as Array<TypesAssetCsvStructure.MusicscorePartTrackString>;
@@ -482,7 +483,6 @@ async function processAudio(
           .outputFormat('null')
           .output('/dev/null')
           .on('stderr', (stderrLine) => {
-            // loudnormの結果はstderrに出力されるため、stderrを収集
             outputRow += stderrLine;
           })
           .on('end', resolve)

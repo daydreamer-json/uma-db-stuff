@@ -17,5 +17,5 @@ log4js.configure({
 });
 
 const logger: log4js.Logger = log4js.getLogger('System');
-logger.trace('Logger initialized');
+// logger.trace('Logger initialized');
 export default logger;

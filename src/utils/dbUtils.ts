@@ -53,6 +53,7 @@ async function loadDb(filePath: string) {
   const getTableData = (tableName: string): Promise<Array<{ [key: string]: any }>> => {
     return new Promise((resolve, reject) => {
       const query = `SELECT * FROM ${tableName}`;
+      // SELECT field_name FROM table_Name WHERE expression
       db.all(query, (err, rows: Array<{ [key: string]: any }>) => {
         if (err) {
           reject(err);
