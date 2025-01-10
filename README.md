@@ -1,6 +1,6 @@
 # uma-db-stuff
 
-A set of experimental scripts to process Umamusume Pretty Derby game assets and database files.
+A set of experimental scripts to process Uma Musume Pretty Derby (ウマ娘 プリティーダービー) game assets and database files.
 
 ## What this scripts can do
 
