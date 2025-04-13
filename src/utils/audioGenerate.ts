@@ -7,7 +7,6 @@ import prompts from 'prompts';
 import ffmpeg from 'fluent-ffmpeg';
 import { DateTime } from 'luxon';
 import chalk from 'chalk';
-import sharp from 'sharp';
 import logger from './logger';
 import argvUtils from './argv';
 import dbUtils from './db';
@@ -804,12 +803,12 @@ async function processAudio(
       configUser.getConfig().file.assetUnityInternalPathDir,
       `live/jacket/jacket_icon_l_${liveId}.png`,
     );
-    const jacketCompressedPath = path.join(
-      argvUtils.getArgv().outputDir,
-      configUser.getConfig().file.outputSubPath.renderedAudio,
-      'tmp',
-      `jacket_compressed.jpg`,
-    );
+    // const jacketCompressedPath = path.join(
+    //   argvUtils.getArgv().outputDir,
+    //   configUser.getConfig().file.outputSubPath.renderedAudio,
+    //   'tmp',
+    //   `jacket_compressed.jpg`,
+    // );
     const metaFlacInputTextPath = path.join(
       argvUtils.getArgv().outputDir,
       configUser.getConfig().file.outputSubPath.renderedAudio,
@@ -906,12 +905,12 @@ async function processAudio(
       ['ENCODERSETTINGS', `${JSON.stringify(configUser.getConfig().audio)}`],
     ];
     await bun.write(metaFlacInputTextPath, metaflacInputTextObj.map((el) => `${el[0]}=${el[1]}`).join('\r\n') + '\r\n');
-    await bun.write(
-      jacketCompressedPath,
-      await sharp(await bun.file(jacketAssetPath).bytes())
-        .jpeg({ quality: 100, mozjpeg: true })
-        .toBuffer(),
-    );
+    // await bun.write(
+    //   jacketCompressedPath,
+    //   await sharp(await bun.file(jacketAssetPath).bytes())
+    //     .jpeg({ quality: 100, mozjpeg: true })
+    //     .toBuffer(),
+    // );
     await subProcessUtils.spawnAsync(
       path.resolve(appConfig.file.cliPath.metaflac),
       [
@@ -920,7 +919,7 @@ async function processAudio(
         '--import-tags-from',
         metaFlacInputTextPath,
         '--import-picture-from',
-        jacketCompressedPath,
+        jacketAssetPath,
         path.join(
           argvUtils.getArgv().outputDir,
           configUser.getConfig().file.outputSubPath.renderedAudio,
