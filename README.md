@@ -13,7 +13,6 @@ A set of experimental scripts to process Uma Musume Pretty Derby ( ウマ娘 プ
 ## Requirements
 
 - Windows x86_64 Environment
-- [Node.js](https://nodejs.org/) >= v22
 - [Windows (DMM) game client](https://dmg.umamusume.jp/)
   - DMM GAMES account is required. You must also be logged into the game at least once.
 
@@ -52,6 +51,10 @@ For details of each configuration item, please refer to the corresponding part o
 For more information on each command, see `uma-db-stuff <command> -h`.
 
 ## Build
+
+### Requirements
+
+- [Bun](https://bun.sh/)
 
 ```
 bun run build
