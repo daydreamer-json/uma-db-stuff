@@ -44,7 +44,7 @@ const initialConfig: ConfigType = {
       assetDb: null,
       masterDb: null,
     },
-    assetUnityInternalPathDir: 'assets/_gallopresources/bundle/resources',
+    assetUnityInternalPathDir: '_gallopresources/bundle/resources',
     outputPath: path.resolve('output'),
     outputSubPath: {
       assets: 'assets',
