@@ -57,5 +57,6 @@ For more information on each command, see `uma-db-stuff <command> -h`.
 - [Bun](https://bun.sh/)
 
 ```
+bun install
 bun run build
 ```
