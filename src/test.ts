@@ -1,39 +1,40 @@
-import fs from 'node:fs';
 import path from 'node:path';
-import { DateTime } from 'luxon';
-import ky from 'ky';
-import lz4 from 'lz4-napi';
-import appConfig from './utils/config.js';
-import argvUtils from './utils/argv.js';
-import logger from './utils/logger.js';
-import dbUtils from './utils/dbUtils.js';
-import downloadUtils from './utils/downloadUtils.js';
-import assetUtils from './utils/assetUtils.js';
-import audioGenerateUtils from './utils/audioGenerateUtils.js';
+import logger from './utils/logger';
+import processUtils from './utils/process';
+import fileUtils from './utils/file';
+import dbUtils from './utils/db';
+import exitUtils from './utils/exit';
+import assetsUtils from './utils/assets';
+import downloadUtils from './utils/download';
+import argvUtils from './utils/argv';
+import configUser from './utils/configUser';
+import reaperUtils from './utils/reaper';
 
 async function mainCmdHandler() {
-  logger.level = argvUtils.getArgv().logLevel;
-  const db = await dbUtils.loadAllDatabase();
-  await downloadUtils.downloadMissingAssets(db.assetDb, false);
-  await (async () => {
-    logger.info('Updating master database ...');
-    await downloadUtils.downloadMissingAssets(
-      db.assetDb.filter((entry) => entry.kind === 'master'),
-      true,
-    );
-    const masterDbAssetEntry = db.assetDb.filter((entry) => entry.kind === 'master')[0];
-    const compressedBuffer = await fs.promises.readFile(
-      path.join(appConfig.file.assetDir, masterDbAssetEntry.hash.slice(0, 2), masterDbAssetEntry.hash),
-    );
-    const decompressedBuffer = await lz4.decompressFrame(compressedBuffer);
-    await fs.promises.writeFile(appConfig.file.sqlDbPath.masterDb, decompressedBuffer);
-  })();
-  await assetUtils.extractUnityAssetBundles(
-    db.assetDb.filter((entry) => entry.name.match(/^live\/(image|jacket|musicscores)\//)),
+  await reaperUtils.reaperCleaning();
+  await reaperUtils.tr5StealthLimiter_runPlugin(
+    path.join(
+      argvUtils.getArgv().outputDir,
+      configUser.getConfig().file.outputSubPath.renderedAudio,
+      'tmp',
+      `l1053_mix_raw.wav`,
+    ),
+    path.join(
+      argvUtils.getArgv().outputDir,
+      configUser.getConfig().file.outputSubPath.renderedAudio,
+      `l1053_mix_norm_test.wav`,
+    ),
+    path.join(
+      argvUtils.getArgv().outputDir,
+      configUser.getConfig().file.outputSubPath.renderedAudio,
+      'tmp',
+      `batch.conf`,
+    ),
+    { input: 10.5, output: -0.05 },
   );
-  await assetUtils.extractCriAudioAssets(
-    db.assetDb.filter((entry) => entry.name.match(/^sound\/l\/.*\.(acf|acb|awb)$/)),
-  );
+  await reaperUtils.reaperCleaning();
+
+  logger.info('All completed');
 }
 
 export default mainCmdHandler;

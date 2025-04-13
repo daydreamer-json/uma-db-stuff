@@ -31,6 +31,8 @@ type MusicscorePartOrig = {
 };
 
 type MusicscorePartTrackString = 'left3' | 'left2' | 'left' | 'center' | 'right' | 'right2' | 'right3';
+const musicScorePartTrackStringSortedArray = ['center', 'left', 'right', 'left2', 'right2', 'left3', 'right3'] as const;
+type MusicscorePartTrackStringSorted = (typeof musicScorePartTrackStringSortedArray)[number];
 
 type MusicscorePartParsed = {
   timeMs: number;
@@ -65,6 +67,11 @@ type MusicscoreLyricsParsed = {
   lyrics: string;
 };
 
+type MusicscoreLyricsJson = {
+  parsed: MusicscoreLyricsParsed[];
+  lrcEncoded: string;
+};
+
 type MusicscoreCyalumeOrig = {
   time: string;
   move_type: string;
@@ -84,10 +91,14 @@ type MusicscoreCyalumeOrig = {
 
 export type {
   MusicscorePartTrackString,
+  MusicscorePartTrackStringSorted,
   MusicscorePartOrig,
   MusicscorePartParsed,
   MusicscorePartJson,
   MusicscoreLyricsOrig,
   MusicscoreLyricsParsed,
+  MusicscoreLyricsJson,
   MusicscoreCyalumeOrig,
 };
+
+export { musicScorePartTrackStringSortedArray };
