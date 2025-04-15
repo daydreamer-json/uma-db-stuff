@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { exec as execCallback, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 
 function spawnAsync(
@@ -35,7 +36,7 @@ function spawnAsync(
     });
     child.on('exit', (exitCode) => {
       if (exitCode !== 0) {
-        reject(new Error(`Spawned process error code ${exitCode}`));
+        reject(new Error(`Spawned process error code ${exitCode}, '${path.basename(command)}'\n${stderr}`));
       }
     });
     child.on('error', (error) => {

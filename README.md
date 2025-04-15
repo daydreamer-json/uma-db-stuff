@@ -12,7 +12,10 @@ A set of experimental scripts to process Uma Musume Pretty Derby ( ウマ娘 プ
 
 ## Requirements
 
-- Windows x86_64 Environment
+- Windows 11 x64 Environment
+- Microsoft Visual C++ Redistributable Packages
+  - It is recommended to use the [AIO installer](https://github.com/abbodi1406/vcredist/releases/latest/download/VisualCppRedist_AIO_x86_x64.exe).
+- [Microsoft .NET Desktop Runtime 8.0](https://aka.ms/dotnet/8.0/windowsdesktop-runtime-win-x64.exe)
 - [Windows (DMM) game client](https://dmg.umamusume.jp/)
   - DMM GAMES account is required. You must also be logged into the game at least once.
 
@@ -49,6 +52,12 @@ When any command is executed, the location of the game's assets folder is automa
 For details of each configuration item, please refer to the corresponding part of the source code ([config.ts](/src/utils/config.ts), [configUser.ts](/src/utils/configUser.ts)).
 
 For more information on each command, see `uma-db-stuff <command> -h`.
+
+## Known issues
+
+- Generate Winning Live audio
+  - Live `1032` wrong subsong volume
+  - Live `1029` latency issue (vocal is too slow)
 
 ## Build
 

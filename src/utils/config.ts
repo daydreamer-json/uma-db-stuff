@@ -19,6 +19,7 @@ type ConfigType = AllRequired<
         ffmpeg: string;
         flac: string;
         metaflac: string;
+        opusenc: string;
         qaac: string;
         sox: string;
         reaper: string;
@@ -90,6 +91,7 @@ const initialConfig: ConfigType = {
       ffmpeg: './bin/ffmpeg/ffmpeg.exe',
       flac: './bin/flac/flac.exe',
       metaflac: './bin/flac/metaflac.exe',
+      opusenc: './bin/opus/opusenc.exe',
       qaac: './bin/qaac/qaac64.exe',
       sox: './bin/sox.exe',
       reaper: './bin/reaper/reaper.exe',
