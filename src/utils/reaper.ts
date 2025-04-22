@@ -217,8 +217,6 @@ async function tr5StealthLimiter_runPlugin(
   await tr5StealthLimiter_preparePost(preparePreResult);
 }
 
-function showDoNotTouchText() {}
-
 export default {
   reaperCleaning,
   tr5StealthLimiter_runPlugin,

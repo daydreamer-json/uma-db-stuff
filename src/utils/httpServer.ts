@@ -11,20 +11,13 @@ async function main() {
   const app = new Hono();
   const port = 54348;
 
-  // カスタム静的ファイルミドルウェア
   app.use('/*', async (c, next) => {
     const requestPath = c.req.path;
     const normalizedPath = requestPath.replace(/^\/+/, '').replace(/\/+/g, '/');
     const filePath = path.join('./output', normalizedPath);
-
     if (await bun.file(filePath).exists()) {
       try {
-        const file = bun.file(filePath);
-        if (await file.exists()) {
-          const mimeType = getMimeType(path.extname(filePath)) || 'text/plain';
-          // logger.trace(file, mimeType);
-          return new Response(file);
-        }
+        return new Response(bun.file(filePath));
       } catch (error) {
         logger.warn(`Error serving file: ${filePath}`, error);
       }
@@ -34,17 +27,15 @@ async function main() {
     return c.notFound();
   });
 
-  // サーバー起動
   const server = bun.serve({
     port,
     fetch: app.fetch,
   });
 
-  const targetUrl = `http://localhost:${port}/db/handbook.html`;
-  logger.debug(`HTTP server running at ${targetUrl}`);
-  await open(targetUrl);
+  logger.debug(`HTTP server running at localhost:${port}`);
+  await open(`http://localhost:${port}/db/handbook.html`);
   logger.debug('Press any key to close the server...');
-  await exitUtils.pressAnyKeyToContinue();
+  await exitUtils.pressAnyKeyToContinue(false);
   server.stop();
 }
 

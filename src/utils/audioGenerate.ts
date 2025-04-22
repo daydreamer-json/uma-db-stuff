@@ -140,30 +140,33 @@ async function askToUserCharaId(
       .filter((el) => el[1])
       .map((el) => el[0]);
     const selectedCharaArray: number[] = [];
-    const questionBuilder = async (position: string) => {
+    const questionBuilder = async (position: string, canBack: boolean = false) => {
       return (
         await prompts({
           type: 'select',
           name: 'value',
           message: `Select singing chara for '${position}' position`,
-          choices: liveCanUseCharaArray
-            // .filter((entry) => selectedCharaArray.includes(entry) === false) // to eliminate duplicates
-            .map((entry) => ({
-              title:
-                entry +
-                ': ' +
-                db.masterDb.text_data.find(
-                  (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
-                ).text,
-              description:
-                'CV: ' +
-                db.masterDb.text_data.find(
-                  (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
-                ).text,
-              value: entry,
-              disabled: false,
-              selected: false,
-            })),
+          choices: [
+            ...liveCanUseCharaArray
+              // .filter((entry) => selectedCharaArray.includes(entry) === false) // to eliminate duplicates
+              .map((entry) => ({
+                title:
+                  entry +
+                  ': ' +
+                  db.masterDb.text_data.find(
+                    (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
+                  ).text,
+                description:
+                  'CV: ' +
+                  db.masterDb.text_data.find(
+                    (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
+                  ).text,
+                value: entry,
+                disabled: false,
+                selected: false,
+              })),
+            { title: '=== Go Back ===', value: -1, disabled: !canBack, selected: false },
+          ],
         })
       ).value;
     };
@@ -198,7 +201,6 @@ async function askToUserCharaId(
         retObj[position] = argParsed[i]!;
         selectedCharaArray.push(argParsed[i]!);
       }
-
       return retObj;
     } else {
       console.log(`Available positions: ${availablePositionArray.map((el) => chalk.bold.green(el)).join(', ')}`);
@@ -212,9 +214,14 @@ async function askToUserCharaId(
         right3: null,
       };
       for (let i = 0; i < availablePositionArray.length; i++) {
-        const rsp = await questionBuilder(availablePositionArray[i]!);
-        selectedCharaArray.push(rsp);
-        retObj[availablePositionArray[i]!] = rsp;
+        const rsp = await questionBuilder(availablePositionArray[i]!, i > 0);
+        if (rsp !== -1) {
+          selectedCharaArray.push(rsp);
+          retObj[availablePositionArray[i]!] = rsp;
+        } else {
+          i -= 2;
+          process.stdout.write('\x1b[1A\x1b[2K\x1b[1A\x1b[2K');
+        }
       }
       return retObj;
     }

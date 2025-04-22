@@ -268,6 +268,7 @@ async function parseCommand() {
     .usage('$0 <command> [argument] [option]')
     .help()
     .alias('help', 'h')
+    .alias('help', '?')
     .alias('version', 'V')
     .demandCommand(1)
     .strict()

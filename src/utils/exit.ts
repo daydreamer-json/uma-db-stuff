@@ -22,8 +22,8 @@ async function pressAnyKeyToExit(errorCode: number): Promise<void> {
   });
 }
 
-async function pressAnyKeyToContinue(): Promise<void> {
-  process.stdout.write('Press any key to continue ...');
+async function pressAnyKeyToContinue(printText: boolean = true): Promise<void> {
+  printText ? process.stdout.write('Press any key to continue ...') : null;
   return new Promise((resolve) => {
     readline.emitKeypressEvents(process.stdin);
     process.stdin.setRawMode(true);
@@ -31,7 +31,7 @@ async function pressAnyKeyToContinue(): Promise<void> {
     process.stdin.once('data', () => {
       process.stdin.setRawMode(false);
       process.stdin.pause();
-      process.stdout.write(`\n`);
+      printText ? process.stdout.write(`\n`) : null;
       resolve(); // Promiseを解決
     });
   });
