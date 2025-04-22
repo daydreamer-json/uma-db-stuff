@@ -22,6 +22,22 @@ async function pressAnyKeyToExit(errorCode: number): Promise<void> {
   });
 }
 
+async function pressAnyKeyToContinue(): Promise<void> {
+  process.stdout.write('Press any key to continue ...');
+  return new Promise((resolve) => {
+    readline.emitKeypressEvents(process.stdin);
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.once('data', () => {
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+      process.stdout.write(`\n`);
+      resolve(); // Promiseを解決
+    });
+  });
+}
+
 export default {
   pressAnyKeyToExit,
+  pressAnyKeyToContinue,
 };

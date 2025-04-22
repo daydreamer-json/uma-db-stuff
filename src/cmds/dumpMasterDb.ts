@@ -4,6 +4,8 @@ import path from 'node:path';
 import YAML from 'yaml';
 import cliProgress from 'cli-progress';
 import { DateTime } from 'luxon';
+import * as zstd from '@mongodb-js/zstd';
+import prompts from 'prompts';
 import appConfig from '../utils/config';
 import configUser from '../utils/configUser';
 import logger from '../utils/logger';
@@ -14,6 +16,8 @@ import exitUtils from '../utils/exit';
 import markdownTableUtils from '../utils/markdownTable';
 import downloadUtils from '../utils/download';
 import assetsUtils from '../utils/assets';
+import htmlBuildUtils from '../utils/htmlBuild';
+import httpServerUtils from '../utils/httpServer';
 import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
 
 async function mainCmdHandler() {
@@ -89,6 +93,19 @@ async function mainCmdHandler() {
       progressBar?.stop();
     },
     exportMusicScores: async () => {
+      if (true) {
+        const regex = new RegExp(`^live/musicscores/.*$`, 'g');
+        if (db.assetDb.filter((el) => el.name.match(regex) && !el.isFileExists).length > 0) {
+          await downloadUtils.downloadMissingAssets(
+            false,
+            db.assetDb.filter((el) => el.name.match(regex)),
+          );
+          await dbUtils.loadAllDb(false);
+        }
+        await assetsUtils.extractUnityAssetBundles(
+          (await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)),
+        );
+      }
       const livesFiltered = db.masterDb.live_data.filter((entry: any) => entry.has_live === 1);
       const outArr: {
         id: number;
@@ -134,164 +151,172 @@ async function mainCmdHandler() {
       }
       await bun.write(path.join(dirObj.root, 'musicscores.json'), JSON.stringify(outArr, null, 2));
     },
-    exportHandbook: async () => {
-      //* Export pretty handbook markdown
-      // await (async () => {
-      //   const regex = new RegExp(`^live/musicscores.*$`, 'g');
-      //   if ((await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex) && !el.isFileExists).length > 0) {
-      //     await downloadUtils.downloadMissingAssets(
-      //       false,
-      //       (await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)),
-      //     );
-      //     await dbUtils.loadAllDb(false);
-      //   }
-      //   await assetsUtils.extractUnityAssetBundles(
-      //     (await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)),
-      //   );
-      // })();
-      logger.debug('Exporting handbook markdown ...');
-      let outputMarkdownText: string = `# Uma Musume ID Handbook\n\nGenerated at: **${DateTime.now().toISO()}**\n\n`;
-      outputMarkdownText += '## Characters\n\n';
-      outputMarkdownText +=
-        (() => {
-          const arrArr: string[][] = [];
-          arrArr.push([
-            'ID',
-            'Name',
-            'Actor',
-            'Sex',
-            'Height',
-            'Bust',
-            'Scale',
-            'Skin',
-            'Shape',
-            'Socks',
-            'Birth Date',
-            'Last Year',
-            'Available At',
-          ]);
-          const isPadStartArray: (0 | 1 | 2)[] = [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-          for (let i = 0; i < db.masterDb.chara_data.length; i++) {
-            const chara = db.masterDb.chara_data[i];
-            arrArr.push([
-              String(chara.id),
-              db.masterDb.text_data.find((el: any) => el.id === 6 && el.category === 6 && el.index === chara.id).text,
-              db.masterDb.text_data.find((el: any) => el.id === 7 && el.category === 7 && el.index === chara.id).text,
-              chara.sex === 1 ? 'M' : 'F',
-              String(chara.height),
-              String(chara.bust),
-              String(chara.scale),
-              String(chara.skin),
-              String(chara.shape),
-              String(chara.socks),
-              (() => {
-                if (chara.birth_year === 1800) {
-                  return (
-                    'xxxx/' + DateTime.fromObject({ month: chara.birth_month, day: chara.birth_day }).toFormat('MM/dd')
-                  );
-                } else {
-                  return DateTime.fromObject({
-                    year: chara.birth_year,
-                    month: chara.birth_month,
-                    day: chara.birth_day,
-                  }).toFormat('yyyy/MM/dd');
-                }
-              })(),
-              chara.last_year === 1800 ? '-' : String(chara.last_year),
-              DateTime.fromSeconds(chara.start_date).toFormat('yyyy/MM/dd'),
-            ]);
-          }
-          return markdownTableUtils.genTable(arrArr, isPadStartArray);
-        })() + '\n\n';
-      outputMarkdownText += '## Winning Live\n\n';
-      const musicScores = await bun.file(path.join(dirObj.root, 'musicscores.json')).json();
-      outputMarkdownText +=
-        (() => {
-          const arrArr: string[][] = [];
-          arrArr.push(['ID', 'Title', 'Description', 'Available At', 'Expire At']);
-          const isPadStartArray: (0 | 1 | 2)[] = [2, 0, 0, 0, 0];
-          const livesFiltered = db.masterDb.live_data.filter((entry: any) => entry.has_live === 1);
-          for (let i = 0; i < livesFiltered.length; i++) {
-            const live = livesFiltered[i];
-            arrArr.push([
-              String(live.music_id),
-              db.masterDb.text_data.find((el: any) => el.id === 16 && el.category === 16 && el.index === live.music_id)
+    exportHandbookV2: async () => {
+      if (true) {
+        const regex = new RegExp(
+          `^(chara/chr.+?/chr_icon_round_[0-9]{4}|chara/chr.+?/chr_icon_[0-9]{4}|live/jacket/jacket_icon_l_[0-9]{4})$`,
+          'g',
+        );
+        if (db.assetDb.filter((el) => el.name.match(regex) && !el.isFileExists).length > 0) {
+          await downloadUtils.downloadMissingAssets(
+            false,
+            db.assetDb.filter((el) => el.name.match(regex)),
+          );
+          await dbUtils.loadAllDb(false);
+        }
+        await assetsUtils.extractUnityAssetBundles(
+          (await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)),
+        );
+      }
+      if (true) {
+        const regex = new RegExp(`^(sound/l/[0-9]{4}/.*_preview_|sound/v/snd_voi_outgame_[0-9]{4}01).*$`, 'g');
+        if ((await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex) && !el.isFileExists).length > 0) {
+          await downloadUtils.downloadMissingAssets(
+            false,
+            (await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)),
+          );
+          await dbUtils.loadAllDb(false);
+        }
+        await assetsUtils.extractCriAudioAssets((await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)));
+      }
+      const transformedDb = {
+        charas: db.masterDb.chara_data.map((chara: any) => ({
+          id: parseInt(chara.id),
+          name: db.masterDb.text_data.find((el: any) => el.id === 6 && el.category === 6 && el.index === chara.id).text,
+          actor: db.masterDb.text_data.find((el: any) => el.id === 7 && el.category === 7 && el.index === chara.id)
+            .text,
+          sex: chara.sex === 1 ? 'M' : 'F',
+          height: chara.height,
+          bust: chara.bust,
+          scale: chara.scale,
+          skin: chara.skin,
+          shape: chara.shape,
+          socks: chara.socks,
+          birthDate: (() => {
+            if (chara.birth_year === 1800) {
+              return (
+                'xxxx/' + DateTime.fromObject({ month: chara.birth_month, day: chara.birth_day }).toFormat('MM/dd')
+              );
+            } else {
+              return DateTime.fromObject({
+                year: chara.birth_year,
+                month: chara.birth_month,
+                day: chara.birth_day,
+              }).toFormat('yyyy/MM/dd');
+            }
+          })(),
+          lastYear: chara.last_year === 1800 ? '-' : String(chara.last_year),
+          availableAt: chara.start_date,
+        })),
+        lives: db.masterDb.live_data
+          .filter((live: any) => live.has_live === 1)
+          .map((live: any) => ({
+            id: parseInt(live.music_id),
+            title: db.masterDb.text_data.find(
+              (el: any) => el.id === 16 && el.category === 16 && el.index === live.music_id,
+            ).text,
+            desc: db.masterDb.text_data
+              .find((el: any) => el.id === 128 && el.category === 128 && el.index === live.music_id)
+              .text.replaceAll('\\n', '<br>'),
+            credit: db.masterDb.text_data
+              .find((el: any) => el.id === 17 && el.category === 17 && el.index === live.music_id)
+              .text.replaceAll('\\n', '<br>'),
+            startAt: live.start_date,
+            expireAt: live.end_date,
+          })),
+        liveAvail: db.masterDb.chara_data
+          .map((chara: any) => {
+            const retObj: Record<string, any> = {
+              id: chara.id,
+              name: db.masterDb.text_data.find((el: any) => el.id === 6 && el.category === 6 && el.index === chara.id)
                 .text,
-              db.masterDb.text_data
-                .find((el: any) => el.id === 128 && el.category === 128 && el.index === live.music_id)
-                .text.replaceAll('\\n', '<br>'),
-              DateTime.fromSeconds(live.start_date).toFormat('yyyy/MM/dd'),
-              DateTime.fromSeconds(live.end_date).toFormat('yyyy/MM/dd'),
-            ]);
+            };
+            let canSing = false;
+            db.masterDb.live_data
+              .filter((live: any) => live.has_live === 1)
+              .forEach((live: any) => {
+                retObj[String(live.music_id)] = (() => {
+                  if (
+                    (live.song_chara_type === 1 && chara.start_date < DateTime.now().toSeconds()) ||
+                    db.masterDb.live_permission_data.some(
+                      (el: any) => el.music_id === live.music_id && el.chara_id === chara.id,
+                    )
+                  ) {
+                    canSing = true;
+                    return 1;
+                  } else return 0;
+                })();
+              });
+            if (canSing === false) return null;
+            return retObj;
+          })
+          .filter((el: any) => el !== null),
+        livePreviewLoopingInfo: await (async () => {
+          const targetLiveIds: number[] = db.masterDb.live_data
+            .filter((live: any) => live.has_live === 1)
+            .map((live: any) => live.music_id);
+          const retArr = [];
+          for (const liveId of targetLiveIds) {
+            const loopingInfoResponse = (
+              await bun
+                .file(
+                  path.join(
+                    configUser.getConfig().file.outputPath,
+                    configUser.getConfig().file.outputSubPath.assets,
+                    configUser.getConfig().file.assetUnityInternalPathDir,
+                    `sound/l/${liveId}/snd_bgm_live_${liveId}_preview_02.awb.json`,
+                  ),
+                )
+                .json()
+            )[0].loopingInfo;
+            retArr.push([liveId, loopingInfoResponse.start, loopingInfoResponse.end]);
           }
-          return markdownTableUtils.genTable(arrArr, isPadStartArray);
-        })() + '\n\n';
-      outputMarkdownText += '## Winning Live Chara Availability\n\n';
-      outputMarkdownText +=
-        (await (async () => {
-          const arrArr: string[][] = [];
-          const livesFiltered = db.masterDb.live_data.filter((entry: any) => entry.has_live === 1);
-          arrArr.push(['Chara', ...livesFiltered.map((el: any) => String(el.music_id).split('').join('<br>'))]);
-          const isPadStartArray: (0 | 1 | 2)[] = [2, ...Array.from({ length: livesFiltered.length }, () => 1 as const)];
-          const filteredCharaData: number[] = db.masterDb.chara_data
-            .filter((entry: any) => entry.start_date < DateTime.now().toSeconds())
-            .map((entry: any) => entry.id);
-          const allCharaData: number[] = db.masterDb.chara_data
-            // .filter((entry: any) => entry.start_date < DateTime.now().toSeconds())
-            .map((entry: any) => entry.id);
-          const liveCharaAvailableArray: { liveId: number; charaIds: number[] }[] = (() => {
-            const tmpArr: { liveId: number; charaIds: number[] }[] = [];
-            for (let i = 0; i < livesFiltered.length; i++) {
-              const liveId: number = livesFiltered[i]!.music_id;
-              const songCharaType: number = livesFiltered[i]!.song_chara_type;
-              if (songCharaType === 1) {
-                // all charas available
-                tmpArr.push({
-                  liveId,
-                  charaIds: [
-                    ...filteredCharaData,
-                    ...db.masterDb.live_permission_data
-                      .filter((entry: any) => entry.music_id === liveId)
-                      .map((entry: any) => entry.chara_id),
-                  ],
-                });
-              } else if (songCharaType === 2) {
-                // only some charas available
-                tmpArr.push({
-                  liveId,
-                  charaIds: [
-                    ...db.masterDb.live_permission_data
-                      .filter((entry: any) => entry.music_id === liveId)
-                      .map((entry: any) => entry.chara_id),
-                  ],
-                });
-              }
-            }
-            return tmpArr;
-          })();
-          for (let i = 0; i < allCharaData.length; i++) {
-            const charaId = allCharaData[i]!;
-            const tmpArr: string[] = [String(charaId)];
-            for (let j = 0; j < liveCharaAvailableArray.length; j++) {
-              const liveCharaAvailObj = liveCharaAvailableArray[j]!;
-              tmpArr.push(liveCharaAvailObj.charaIds.includes(charaId) ? '✅' : '❌');
-            }
-            if (
-              JSON.stringify(tmpArr) !==
-              JSON.stringify([String(charaId), ...Array.from({ length: liveCharaAvailableArray.length }, () => '❌')])
-            ) {
-              arrArr.push(tmpArr);
-            }
+          return retArr;
+        })(),
+        charaPreviewAudioSubsongInfo: await (async () => {
+          const retArr = [];
+          for (const chara of db.masterDb.chara_data) {
+            if (chara.start_date < DateTime.now().toSeconds()) {
+              const rspJson = await bun
+                .file(
+                  path.join(
+                    configUser.getConfig().file.outputPath,
+                    configUser.getConfig().file.outputSubPath.assets,
+                    configUser.getConfig().file.assetUnityInternalPathDir,
+                    `sound/v/snd_voi_outgame_${chara.id}01.awb.json`,
+                  ),
+                )
+                .json();
+              retArr.push(rspJson.map((el: any) => el.streamInfo.name).findIndex((el: any) => el.match(/_0003$/g)));
+            } else retArr.push(null);
           }
-          return markdownTableUtils.genTable(arrArr, isPadStartArray);
-        })()) + '\n\n';
-      await bun.write(path.join(dirObj.root, 'handbook.md'), outputMarkdownText);
+          return retArr;
+        })(),
+      };
+      const compressedDbB64 = (await zstd.compress(Buffer.from(JSON.stringify(transformedDb), 'utf-8'), 20)).toString(
+        'base64',
+      );
+      await bun.write(path.join(dirObj.root, 'handbook.html'), await htmlBuildUtils.buildHtml(compressedDbB64));
     },
   };
-  // await func.exportAssetDb();
-  // await func.exportMasterDb();
+  await func.exportAssetDb();
+  await func.exportMasterDb();
   await func.exportMusicScores();
-  await func.exportHandbook();
+  await func.exportHandbookV2();
+  if (
+    (
+      await prompts({
+        type: 'toggle',
+        name: 'value',
+        message: 'Do you want to open the generated handbook?',
+        initial: true,
+        active: 'yes',
+        inactive: 'no',
+      })
+    ).value
+  ) {
+    await httpServerUtils.main();
+  }
 }
 
 export default mainCmdHandler;

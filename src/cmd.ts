@@ -216,6 +216,22 @@ async function parseCommand() {
       },
       wrapHandler(cmds.generateLiveAudio),
     )
+    .command(
+      ['openHandbook', 'handbook'],
+      'Start HTTP server and open handbook',
+      (yargs) => {
+        yargs.options({
+          'output-dir': {
+            alias: ['o'],
+            desc: 'Output directory',
+            default: configUser.getConfig().file.outputPath,
+            normalize: true,
+            type: 'string',
+          },
+        });
+      },
+      wrapHandler(cmds.openHandbook),
+    )
     .options({
       'no-show-progress': {
         alias: ['np'],

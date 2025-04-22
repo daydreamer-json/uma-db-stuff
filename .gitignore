@@ -1,7 +1,7 @@
 # dependencies (bun install)
 node_modules
 /*.exe
-/bin/reaper/reaper-reginfo2.ini
+bin/reaper/reaper-reginfo2.ini
 
 # output
 out

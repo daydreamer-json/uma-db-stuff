@@ -13,7 +13,7 @@ A set of experimental scripts to process Uma Musume Pretty Derby ( ウマ娘 プ
 ## Requirements
 
 - Windows 11 x64 Environment
-- Microsoft Visual C++ Redistributable Packages
+- [Microsoft Visual C++ Redistributable Packages](https://aka.ms/vs/17/release/vc_redist.x64.exe)
   - It is recommended to use the [AIO installer](https://github.com/abbodi1406/vcredist/releases/latest/download/VisualCppRedist_AIO_x86_x64.exe).
 - [Microsoft .NET Desktop Runtime 8.0](https://aka.ms/dotnet/8.0/windowsdesktop-runtime-win-x64.exe)
 - [Windows (DMM) game client](https://dmg.umamusume.jp/)

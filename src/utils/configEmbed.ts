@@ -2,5 +2,5 @@ import semver from 'semver';
 
 export default {
   APPLICATION_NAME: 'uma-db-stuff',
-  VERSION_NUMBER: semver.valid('0.1.0'),
+  VERSION_NUMBER: semver.valid('0.1.1'),
 };

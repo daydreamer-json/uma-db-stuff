@@ -760,7 +760,7 @@ async function processAudio(
         false,
       );
     }
-    logger.debug(chalk.gray('[Live Audio] ') + 'Encoding mastered audio ...');
+    logger.debug(chalk.gray('[Live Audio] ') + 'Encoding mastered audio to FLAC ...');
     await subProcessUtils.spawnAsync(
       path.resolve(appConfig.file.cliPath.flac),
       [
@@ -795,15 +795,17 @@ async function processAudio(
     );
   })();
 
+  const jacketAssetPath = path.join(
+    argvUtils.getArgv().outputDir,
+    configUser.getConfig().file.outputSubPath.assets,
+    configUser.getConfig().file.assetUnityInternalPathDir,
+    `live/jacket/jacket_icon_l_${liveId}.png`,
+  );
+
   //* ===== Add metadata to mastered audio =====
   await (async () => {
-    logger.debug(chalk.gray('[Live Audio] ') + 'Writing metadata to mastered audio ...');
-    const jacketAssetPath = path.join(
-      argvUtils.getArgv().outputDir,
-      configUser.getConfig().file.outputSubPath.assets,
-      configUser.getConfig().file.assetUnityInternalPathDir,
-      `live/jacket/jacket_icon_l_${liveId}.png`,
-    );
+    // logger.debug(chalk.gray('[Live Audio] ') + 'Writing metadata to mastered audio ...');
+
     // const jacketCompressedPath = path.join(
     //   argvUtils.getArgv().outputDir,
     //   configUser.getConfig().file.outputSubPath.renderedAudio,
@@ -950,7 +952,7 @@ async function processAudio(
 
   //* ===== Encode AAC =====
   await (async () => {
-    logger.debug(chalk.gray('[Live Audio] ') + 'Encoding mastered audio (lossy) ...');
+    logger.debug(chalk.gray('[Live Audio] ') + 'Encoding mastered audio to AAC ...');
     await subProcessUtils.spawnAsync(
       path.resolve(appConfig.file.cliPath.qaac),
       [
@@ -1005,6 +1007,47 @@ async function processAudio(
       false,
     );
   })();
+
+  //* ===== Encode Opus =====
+  // await (async () => {
+  //   logger.debug(chalk.gray('[Live Audio] ') + 'Encoding mastered audio to Opus ...');
+  //   await subProcessUtils.spawnAsync(
+  //     appConfig.file.cliPath.opusenc,
+  //     [
+  //       '--bitrate',
+  //       String(160),
+  //       '--vbr',
+  //       '--music',
+  //       '--comp',
+  //       String(10),
+  //       '--framesize',
+  //       String(20),
+  //       path.join(
+  //         argvUtils.getArgv().outputDir,
+  //         configUser.getConfig().file.outputSubPath.renderedAudio,
+  //         'mix_norm_' + baseFilename + '.flac',
+  //       ),
+  //       path.join(
+  //         argvUtils.getArgv().outputDir,
+  //         configUser.getConfig().file.outputSubPath.renderedAudio,
+  //         'mix_norm_' + baseFilename + '.opus',
+  //       ),
+  //     ],
+  //     {},
+  //     false,
+  //   );
+  //   // await subProcessUtils.spawnAsync(appConfig.file.cliPath.ffmpeg, [
+  //   //   '--loglevel',
+  //   //   'warning',
+  //   //   '-i',
+  //   //   path.join(
+  //   //     argvUtils.getArgv().outputDir,
+  //   //     configUser.getConfig().file.outputSubPath.renderedAudio,
+  //   //     'mix_norm_' + baseFilename + '.tmp.opus',
+  //   //   ),
+
+  //   // ], {}, false);
+  // })();
 
   await fs.rm(
     path.join(argvUtils.getArgv().outputDir, configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
