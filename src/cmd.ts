@@ -257,6 +257,7 @@ async function parseCommand() {
       argvUtils.setArgv(argv);
       logger.level = argvUtils.getArgv().logLevel;
       logger.trace('Process started');
+      await processUtils.checkRequirements();
       await processUtils.checkIsAdmin();
       await processUtils.checkIsGameRunning();
       await fileUtils.resolveGameDir();

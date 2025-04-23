@@ -1,6 +1,6 @@
 {
   "name": "uma-db-stuff",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A set of experimental scripts to process Umamusume Pretty Derby game assets and database files",
   "author": "daydreamer-json <atarakima1@icloud.com> (https://github.com/daydreamer-json)",
   "license": "AGPL-3.0-or-later",
