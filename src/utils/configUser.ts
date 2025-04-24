@@ -1,6 +1,7 @@
 import bun from 'bun';
 import path from 'node:path';
 import YAML from 'yaml';
+import deepmerge from 'deepmerge';
 
 type Freeze<T> = Readonly<{
   [P in keyof T]: T[P] extends object ? Freeze<T[P]> : T[P];
@@ -26,6 +27,7 @@ type ConfigType = AllRequired<{
     };
   };
   audio: {
+    useCheersInst: boolean; // Whether to include audience cheers in the live audio
     targetLoudness: number; // Target for volume normalization during winning live audio generation
     volumeCompensation: {
       //! Probably still does not work
@@ -53,6 +55,7 @@ const initialConfig: ConfigType = {
     },
   },
   audio: {
+    useCheersInst: false,
     targetLoudness: -7.2,
     volumeCompensation: {
       inst: 0.0,
@@ -71,7 +74,11 @@ if ((await bun.file(filePath).exists()) === false) {
 
 let config: ConfigType = await (async () => {
   const rawFileData: ConfigType = YAML.parse(await bun.file(filePath).text()) as ConfigType;
-  return rawFileData;
+  const mergedConfig = deepmerge(initialConfig, rawFileData);
+  if (JSON.stringify(rawFileData) !== JSON.stringify(mergedConfig)) {
+    await bun.write(filePath, YAML.stringify(mergedConfig, null, 2));
+  }
+  return mergedConfig;
 })();
 
 export default {

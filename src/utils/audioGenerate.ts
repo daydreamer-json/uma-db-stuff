@@ -17,8 +17,9 @@ import assetsUtils from './assets';
 import mathUtils from './math';
 import reaperUtils from './reaper';
 import subProcessUtils from './subProcess';
-import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
 import configEmbed from './configEmbed';
+import exitUtils from './exit';
+import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
 const execPromise = util.promisify(child_process.exec);
 
 async function askToUserLiveId(): Promise<number> {
@@ -51,6 +52,17 @@ async function askToUserLiveId(): Promise<number> {
             })),
         })
       ).value;
+  if (!argvUtils.getArgv().liveId) process.stdout.write('\x1b[1A\x1b[2K');
+  console.log(
+    'Selected live track: ' +
+      liveId +
+      ': ' +
+      chalk.bold.green(
+        db.text_data.find(
+          (texEntry: any) => texEntry.id === 16 && texEntry.category === 16 && texEntry.index === liveId,
+        ).text,
+      ),
+  );
   if (!db.live_data.find((entry: { [key: string]: any }) => entry.music_id === liveId)) {
     throw new Error(`live '${liveId}' not found`);
   }
@@ -203,7 +215,6 @@ async function askToUserCharaId(
       }
       return retObj;
     } else {
-      console.log(`Available positions: ${availablePositionArray.map((el) => chalk.bold.green(el)).join(', ')}`);
       const retObj: Record<string, number | null> = {
         left3: null,
         left2: null,
@@ -213,15 +224,79 @@ async function askToUserCharaId(
         right2: null,
         right3: null,
       };
-      for (let i = 0; i < availablePositionArray.length; i++) {
-        const rsp = await questionBuilder(availablePositionArray[i]!, i > 0);
-        if (rsp !== -1) {
-          selectedCharaArray.push(rsp);
-          retObj[availablePositionArray[i]!] = rsp;
-        } else {
-          i -= 2;
-          process.stdout.write('\x1b[1A\x1b[2K\x1b[1A\x1b[2K');
+      while (true) {
+        const positionTargetIndex: number = (
+          await prompts(
+            {
+              type: 'select',
+              name: 'value',
+              message: `Map the chara to each position`,
+              choices: (() => {
+                const _ = [
+                  ...availablePositionArray.map((str, index) => ({
+                    title:
+                      chalk.bold.cyan(
+                        str.padEnd(mathUtils.arrayMax(availablePositionArray.map((_) => _.length)), ' '),
+                      ) +
+                      ' - ' +
+                      (!retObj[str]
+                        ? chalk.bold.red('Chara not selected')
+                        : `${chalk.green(retObj[str])}: ${chalk.bold.green(
+                            db.masterDb.text_data.find(
+                              (texEntry: any) =>
+                                texEntry.id === 6 && texEntry.category === 6 && texEntry.index === retObj[str],
+                            ).text,
+                          )}`),
+                    value: index,
+                  })),
+                ];
+                if (availablePositionArray.map((str) => retObj[str]).filter((el) => el === null).length === 0) {
+                  _.push({
+                    title: chalk.bold.yellow('=== Finish selecting ==='),
+                    value: -1,
+                  });
+                }
+                return _;
+              })(),
+            },
+            {
+              onCancel: async () => {
+                process.stdout.write('\x1b[1A\x1b[2K');
+                await exitUtils.pressAnyKeyToExit(1);
+              },
+            },
+          )
+        ).value;
+        process.stdout.write('\x1b[1A\x1b[2K');
+        if (positionTargetIndex === -1) {
+          break;
         }
+        retObj[availablePositionArray[positionTargetIndex]!] = (
+          await prompts({
+            type: 'select',
+            name: 'value',
+            message: `Select singing chara for '${availablePositionArray[positionTargetIndex]}' position`,
+            choices: [
+              ...liveCanUseCharaArray
+                // .filter((entry) => selectedCharaArray.includes(entry) === false) // to eliminate duplicates
+                .map((entry) => ({
+                  title:
+                    entry +
+                    ': ' +
+                    db.masterDb.text_data.find(
+                      (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
+                    ).text,
+                  description:
+                    'CV: ' +
+                    db.masterDb.text_data.find(
+                      (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
+                    ).text,
+                  value: entry,
+                })),
+            ],
+          })
+        ).value;
+        process.stdout.write('\x1b[1A\x1b[2K');
       }
       return retObj;
     }
