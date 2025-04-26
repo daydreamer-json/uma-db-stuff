@@ -365,7 +365,7 @@ async function processAudio(
         )
           arr.push(charaId);
       }
-      return arr;
+      return [...new Set(arr)];
     })();
     if (fileNotFoundChara.length > 0) {
       const regex = new RegExp(
@@ -391,6 +391,11 @@ async function processAudio(
   const positionList = Object.entries(musicScoreData.part.availableTrack)
     .filter((el) => el[1])
     .map((el) => el[0]) as TypesAssetCsvStructure.MusicscorePartTrackString[];
+  const singleCharaModeCharaId: number | null = Object.values(selectedSingChara)
+    .filter((el) => el !== null)
+    .every((val, _, arr) => val === arr[0])
+    ? (Object.values(selectedSingChara).filter((el) => el !== null)[0] as number)
+    : null;
   const okeMetadataJson = await bun.file(okeMetadataJsonPath).json();
   const liveSongDurationMs = Math.ceil((okeMetadataJson[0].numberOfSamples / okeMetadataJson[0].sampleRate) * 1000);
   const timeStartEndArray: { startMs: number; endMs: number }[] = (() => {
@@ -407,113 +412,184 @@ async function processAudio(
     musicScoreData.part.part.map((entry) => mathUtils.arrayMax(Object.values(entry.tracks))),
   );
 
-  //* ===== Extract original audio segments (split) =====
-  logger.info(chalk.gray('[Live Audio] ') + 'Extracting audio segments ...');
-  await fs.mkdir(
-    path.join(
-      argvUtils.getArgv().outputDir,
-      configUser.getConfig().file.outputSubPath.renderedAudio,
-      'tmp',
-      'split_orig',
-    ),
-    { recursive: true },
-  );
-  for (const positionKey of positionList) {
-    for (const timeStartEndEntry of timeStartEndArray) {
-      for (let subSongIndex = 0; subSongIndex < subSongCount; subSongIndex++) {
-        await new Promise((resolve, reject) => {
-          ffmpeg(
-            path.join(
-              argvUtils.getArgv().outputDir,
-              configUser.getConfig().file.outputSubPath.assets,
-              configUser.getConfig().file.assetUnityInternalPathDir,
-              `sound/l/${liveId}`,
-              subSongCount > 1
-                ? `snd_bgm_live_${liveId}_chara_${selectedSingChara[positionKey]}_01_awb/${String(subSongIndex).padStart(8, '0')}_snd_bgm_live_${liveId}_chara_${selectedSingChara[positionKey]}_01.flac`
-                : `snd_bgm_live_${liveId}_chara_${selectedSingChara[positionKey]}_01.awb.flac`,
-              // `snd_bgm_live_${liveId}_oke_02.awb.flac`,
-            ),
-          )
-            .setStartTime(timeStartEndEntry.startMs / 1000)
-            .setDuration(
-              timeStartEndEntry.endMs === -1 ? 3600 : (timeStartEndEntry.endMs - timeStartEndEntry.startMs) / 1000,
-            )
-            .audioCodec('pcm_f32le')
-            .output(
-              path.join(
-                argvUtils.getArgv().outputDir,
-                configUser.getConfig().file.outputSubPath.renderedAudio,
-                'tmp',
-                'split_orig',
-                `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}_${timeStartEndEntry.startMs}-${timeStartEndEntry.endMs}.wav`,
-              ),
-            )
-            .on('end', resolve)
-            .on('error', reject)
-            .run();
-        });
-      }
-    }
-  }
-
-  //* ===== Process volume pan filter to all segments =====
-  logger.info(chalk.gray('[Live Audio] ') + 'Processing audio segments ...');
-  await fs.mkdir(
-    path.join(
-      argvUtils.getArgv().outputDir,
-      configUser.getConfig().file.outputSubPath.renderedAudio,
-      'tmp',
-      'split_processed',
-    ),
-    {
-      recursive: true,
-    },
-  );
-  for (const positionKey of positionList) {
-    for (const [partIndex, partEntry] of Object.entries(musicScoreData.part.part)) {
-      for (let subSongIndex = 0; subSongIndex < subSongCount; subSongIndex++) {
-        await (async () => {
-          const polyphonyCount = Object.values(partEntry.tracks).filter((el) => el === subSongIndex + 1).length;
-          const volumeNormFactor = Math.sqrt(1 / Math.max(1, polyphonyCount));
-          const volumeValue =
-            partEntry.tracksEnable[positionKey] === true
-              ? partEntry.tracks[positionKey] === subSongIndex + 1
-                ? mathUtils.rounder(
-                    'round',
-                    partEntry.volume[positionKey] === 999 || partEntry.volume[positionKey] === null
-                      ? volumeNormFactor
-                      : partEntry.volume[positionKey],
-                    3,
-                  ).orig
-                : 0
-              : 0;
-          const panValue =
-            partEntry.tracksEnable[positionKey] === true
-              ? partEntry.tracks[positionKey] === subSongIndex + 1
-                ? partEntry.pan[positionKey] === 999 || partEntry.pan[positionKey] === null
-                  ? 0
-                  : partEntry.pan[positionKey]
-                : 0
-              : 0;
-          const panGainValueForFfmpeg = {
-            left: panValue <= 0 ? 1 : 1 - panValue,
-            right: panValue >= 0 ? 1 : 1 + panValue,
-          };
+  if (singleCharaModeCharaId === null) {
+    //* ===== Extract original audio segments (split) =====
+    logger.info(chalk.gray('[Live Audio] ') + 'Extracting audio segments ...');
+    await fs.mkdir(
+      path.join(
+        argvUtils.getArgv().outputDir,
+        configUser.getConfig().file.outputSubPath.renderedAudio,
+        'tmp',
+        'split_orig',
+      ),
+      { recursive: true },
+    );
+    for (const positionKey of positionList) {
+      for (const timeStartEndEntry of timeStartEndArray) {
+        for (let subSongIndex = 0; subSongIndex < subSongCount; subSongIndex++) {
           await new Promise((resolve, reject) => {
             ffmpeg(
               path.join(
                 argvUtils.getArgv().outputDir,
-                configUser.getConfig().file.outputSubPath.renderedAudio,
-                'tmp',
-                'split_orig',
-                `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}_${timeStartEndArray[parseInt(partIndex)]!.startMs}-${timeStartEndArray[parseInt(partIndex)]!.endMs}.wav`,
+                configUser.getConfig().file.outputSubPath.assets,
+                configUser.getConfig().file.assetUnityInternalPathDir,
+                `sound/l/${liveId}`,
+                subSongCount > 1
+                  ? `snd_bgm_live_${liveId}_chara_${selectedSingChara[positionKey]}_01_awb/${String(subSongIndex).padStart(8, '0')}_snd_bgm_live_${liveId}_chara_${selectedSingChara[positionKey]}_01.flac`
+                  : `snd_bgm_live_${liveId}_chara_${selectedSingChara[positionKey]}_01.awb.flac`,
+                // `snd_bgm_live_${liveId}_oke_02.awb.flac`,
               ),
             )
-              .audioFilters([
-                { filter: 'volume', options: volumeValue.toString() },
+              .setStartTime(timeStartEndEntry.startMs / 1000)
+              .setDuration(
+                timeStartEndEntry.endMs === -1 ? 3600 : (timeStartEndEntry.endMs - timeStartEndEntry.startMs) / 1000,
+              )
+              .audioCodec('pcm_f32le')
+              .output(
+                path.join(
+                  argvUtils.getArgv().outputDir,
+                  configUser.getConfig().file.outputSubPath.renderedAudio,
+                  'tmp',
+                  'split_orig',
+                  `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}_${timeStartEndEntry.startMs}-${timeStartEndEntry.endMs}.wav`,
+                ),
+              )
+              .on('end', resolve)
+              .on('error', reject)
+              .run();
+          });
+        }
+      }
+    }
+
+    //* ===== Process volume pan filter to all segments =====
+    logger.info(chalk.gray('[Live Audio] ') + 'Processing audio segments ...');
+    await fs.mkdir(
+      path.join(
+        argvUtils.getArgv().outputDir,
+        configUser.getConfig().file.outputSubPath.renderedAudio,
+        'tmp',
+        'split_processed',
+      ),
+      {
+        recursive: true,
+      },
+    );
+    for (const positionKey of positionList) {
+      for (const [partIndex, partEntry] of Object.entries(musicScoreData.part.part)) {
+        for (let subSongIndex = 0; subSongIndex < subSongCount; subSongIndex++) {
+          await (async () => {
+            const polyphonyCount = Object.values(partEntry.tracks).filter((el) => el === subSongIndex + 1).length;
+            const volumeNormFactor = Math.sqrt(1 / Math.max(1, polyphonyCount));
+            const volumeValue =
+              partEntry.tracksEnable[positionKey] === true
+                ? partEntry.tracks[positionKey] === subSongIndex + 1
+                  ? mathUtils.rounder(
+                      'round',
+                      partEntry.volume[positionKey] === 999 || partEntry.volume[positionKey] === null
+                        ? volumeNormFactor
+                        : partEntry.volume[positionKey],
+                      3,
+                    ).orig
+                  : 0
+                : 0;
+            const panValue =
+              partEntry.tracksEnable[positionKey] === true
+                ? partEntry.tracks[positionKey] === subSongIndex + 1
+                  ? partEntry.pan[positionKey] === 999 || partEntry.pan[positionKey] === null
+                    ? 0
+                    : partEntry.pan[positionKey]
+                  : 0
+                : 0;
+            const panGainValueForFfmpeg = {
+              left: panValue <= 0 ? 1 : 1 - panValue,
+              right: panValue >= 0 ? 1 : 1 + panValue,
+            };
+            await new Promise((resolve, reject) => {
+              ffmpeg(
+                path.join(
+                  argvUtils.getArgv().outputDir,
+                  configUser.getConfig().file.outputSubPath.renderedAudio,
+                  'tmp',
+                  'split_orig',
+                  `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}_${timeStartEndArray[parseInt(partIndex)]!.startMs}-${timeStartEndArray[parseInt(partIndex)]!.endMs}.wav`,
+                ),
+              )
+                .audioFilters([
+                  { filter: 'volume', options: volumeValue.toString() },
+                  {
+                    filter: 'pan',
+                    options: `stereo|c0=${panGainValueForFfmpeg.left}*c0|c1=${panGainValueForFfmpeg.right}*c1`,
+                  },
+                ])
+                .audioCodec('pcm_f32le')
+                .output(
+                  path.join(
+                    argvUtils.getArgv().outputDir,
+                    configUser.getConfig().file.outputSubPath.renderedAudio,
+                    'tmp',
+                    'split_processed',
+                    `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}_${timeStartEndArray[parseInt(partIndex)]!.startMs}-${timeStartEndArray[parseInt(partIndex)]!.endMs}.wav`,
+                  ),
+                )
+                .on('end', resolve)
+                .on('error', reject)
+                .run();
+            });
+          })();
+        }
+      }
+    }
+    await fs.rm(
+      path.join(
+        argvUtils.getArgv().outputDir,
+        configUser.getConfig().file.outputSubPath.renderedAudio,
+        'tmp',
+        'split_orig',
+      ),
+      {
+        recursive: true,
+        force: true,
+      },
+    );
+
+    //* ===== Concat all processed segments =====
+    logger.info(chalk.gray('[Live Audio] ') + 'Compositing processed segments ...');
+    for (const positionKey of positionList) {
+      await fs.mkdir(
+        path.join(
+          argvUtils.getArgv().outputDir,
+          configUser.getConfig().file.outputSubPath.renderedAudio,
+          'tmp',
+          'concat_processed',
+        ),
+        {
+          recursive: true,
+        },
+      );
+      for (let subSongIndex = 0; subSongIndex < subSongCount; subSongIndex++) {
+        await (async () => {
+          const inputFiles = timeStartEndArray.map((entry) => {
+            return path.join(
+              argvUtils.getArgv().outputDir,
+              configUser.getConfig().file.outputSubPath.renderedAudio,
+              'tmp',
+              'split_processed',
+              `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}_${entry.startMs}-${entry.endMs}.wav`,
+            );
+          });
+          await new Promise((resolve, reject) => {
+            const ffmpegCommand = ffmpeg();
+            inputFiles.forEach((filePath) => ffmpegCommand.input(filePath));
+            ffmpegCommand
+              .complexFilter([
                 {
-                  filter: 'pan',
-                  options: `stereo|c0=${panGainValueForFfmpeg.left}*c0|c1=${panGainValueForFfmpeg.right}*c1`,
+                  filter: 'concat',
+                  options: {
+                    n: inputFiles.length,
+                    v: 0,
+                    a: 1,
+                  },
                 },
               ])
               .audioCodec('pcm_f32le')
@@ -522,8 +598,8 @@ async function processAudio(
                   argvUtils.getArgv().outputDir,
                   configUser.getConfig().file.outputSubPath.renderedAudio,
                   'tmp',
-                  'split_processed',
-                  `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}_${timeStartEndArray[parseInt(partIndex)]!.startMs}-${timeStartEndArray[parseInt(partIndex)]!.endMs}.wav`,
+                  'concat_processed',
+                  `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}.wav`,
                 ),
               )
               .on('end', resolve)
@@ -533,91 +609,27 @@ async function processAudio(
         })();
       }
     }
-  }
-  await fs.rm(
-    path.join(
-      argvUtils.getArgv().outputDir,
-      configUser.getConfig().file.outputSubPath.renderedAudio,
-      'tmp',
-      'split_orig',
-    ),
-    {
-      recursive: true,
-      force: true,
-    },
-  );
-
-  //* ===== Concat all processed segments =====
-  logger.info(chalk.gray('[Live Audio] ') + 'Compositing processed segments ...');
-  for (const positionKey of positionList) {
-    await fs.mkdir(
+    await fs.rm(
       path.join(
         argvUtils.getArgv().outputDir,
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
-        'concat_processed',
+        'split_processed',
       ),
       {
         recursive: true,
+        force: true,
       },
     );
-    for (let subSongIndex = 0; subSongIndex < subSongCount; subSongIndex++) {
-      await (async () => {
-        const inputFiles = timeStartEndArray.map((entry) => {
-          return path.join(
-            argvUtils.getArgv().outputDir,
-            configUser.getConfig().file.outputSubPath.renderedAudio,
-            'tmp',
-            'split_processed',
-            `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}_${entry.startMs}-${entry.endMs}.wav`,
-          );
-        });
-        await new Promise((resolve, reject) => {
-          const ffmpegCommand = ffmpeg();
-          inputFiles.forEach((filePath) => ffmpegCommand.input(filePath));
-          ffmpegCommand
-            .complexFilter([
-              {
-                filter: 'concat',
-                options: {
-                  n: inputFiles.length,
-                  v: 0,
-                  a: 1,
-                },
-              },
-            ])
-            .audioCodec('pcm_f32le')
-            .output(
-              path.join(
-                argvUtils.getArgv().outputDir,
-                configUser.getConfig().file.outputSubPath.renderedAudio,
-                'tmp',
-                'concat_processed',
-                `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}.wav`,
-              ),
-            )
-            .on('end', resolve)
-            .on('error', reject)
-            .run();
-        });
-      })();
-    }
   }
-  await fs.rm(
-    path.join(
-      argvUtils.getArgv().outputDir,
-      configUser.getConfig().file.outputSubPath.renderedAudio,
-      'tmp',
-      'split_processed',
-    ),
-    {
-      recursive: true,
-      force: true,
-    },
-  );
 
   //* ===== Mix all audio tracks =====
   logger.info(chalk.gray('[Live Audio] ') + 'Mixing audio tracks ...');
+  if (singleCharaModeCharaId !== null)
+    await fs.mkdir(
+      path.join(argvUtils.getArgv().outputDir, configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
+      { recursive: true },
+    );
   await (async () => {
     const inputFiles: string[] = [];
     inputFiles.push(
@@ -625,18 +637,35 @@ async function processAudio(
         argvUtils.getArgv().outputDir,
         configUser.getConfig().file.outputSubPath.assets,
         configUser.getConfig().file.assetUnityInternalPathDir,
-        `sound/l/${liveId}/snd_bgm_live_${liveId}_oke_${isOkeCheers ? '01' : '02'}.awb.flac`,
+        `sound/l/${liveId}/snd_bgm_live_${liveId}_oke_${isOkeCheers ? (liveId === 1151 ? '01_01' : '01') : '02'}.awb.flac`,
+        // Temporary support for 1151 file naming conventions as some of them are different
       ),
     );
-    for (const positionKey of positionList) {
+    if (singleCharaModeCharaId === null) {
+      for (const positionKey of positionList) {
+        for (let subSongIndex = 0; subSongIndex < subSongCount; subSongIndex++) {
+          inputFiles.push(
+            path.join(
+              argvUtils.getArgv().outputDir,
+              configUser.getConfig().file.outputSubPath.renderedAudio,
+              'tmp',
+              'concat_processed',
+              `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}.wav`,
+            ),
+          );
+        }
+      }
+    } else {
       for (let subSongIndex = 0; subSongIndex < subSongCount; subSongIndex++) {
         inputFiles.push(
           path.join(
             argvUtils.getArgv().outputDir,
-            configUser.getConfig().file.outputSubPath.renderedAudio,
-            'tmp',
-            'concat_processed',
-            `l${liveId}_${positionKey}_c${selectedSingChara[positionKey]}_s${subSongIndex}.wav`,
+            configUser.getConfig().file.outputSubPath.assets,
+            configUser.getConfig().file.assetUnityInternalPathDir,
+            `sound/l/${liveId}`,
+            subSongCount > 1
+              ? `snd_bgm_live_${liveId}_chara_${singleCharaModeCharaId}_01_awb/${String(subSongIndex).padStart(8, '0')}_snd_bgm_live_${liveId}_chara_${singleCharaModeCharaId}_01.flac`
+              : `snd_bgm_live_${liveId}_chara_${singleCharaModeCharaId}_01.awb.flac`,
           ),
         );
       }
@@ -676,33 +705,40 @@ async function processAudio(
         .run();
     });
   })();
-  await fs.rm(
-    path.join(
-      argvUtils.getArgv().outputDir,
-      configUser.getConfig().file.outputSubPath.renderedAudio,
-      'tmp',
-      'concat_processed',
-    ),
-    {
-      recursive: true,
-      force: true,
-    },
-  );
+  if (singleCharaModeCharaId === null)
+    await fs.rm(
+      path.join(
+        argvUtils.getArgv().outputDir,
+        configUser.getConfig().file.outputSubPath.renderedAudio,
+        'tmp',
+        'concat_processed',
+      ),
+      {
+        recursive: true,
+        force: true,
+      },
+    );
 
   const baseFilename = `${liveId}_${
     db.masterDb.text_data.find(
       (texEntry: any) => texEntry.id === 16 && texEntry.category === 16 && texEntry.index === liveId,
     ).text
-  }_${TypesAssetCsvStructure.musicScorePartTrackStringSortedArray
-    .map((key) => selectedSingChara[key])
-    .filter((val): val is number => val !== null)
-    .map(
-      (entry) =>
-        db.masterDb.text_data.find(
-          (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
-        ).text,
-    )
-    .join('_')}`;
+  }_${
+    singleCharaModeCharaId === null
+      ? TypesAssetCsvStructure.musicScorePartTrackStringSortedArray
+          .map((key) => selectedSingChara[key])
+          .filter((val): val is number => val !== null)
+          .map(
+            (entry) =>
+              db.masterDb.text_data.find(
+                (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
+              ).text,
+          )
+          .join('_')
+      : db.masterDb.text_data.find(
+          (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === singleCharaModeCharaId,
+        ).text
+  }`;
 
   //* ===== Mastering mixed audio =====
   logger.info(chalk.gray('[Live Audio] ') + 'Mastering audio track ...');
@@ -906,25 +942,61 @@ async function processAudio(
           (texEntry: any) => texEntry.id === 16 && texEntry.category === 16 && texEntry.index === liveId,
         ).text as string,
       ],
-      ['ALBUMARTIST', 'Various Artists'],
-      ...TypesAssetCsvStructure.musicScorePartTrackStringSortedArray
-        .map((key) => selectedSingChara[key])
-        .filter((val): val is number => val !== null)
-        .map(
-          (entry) =>
+      [
+        'ALBUMARTIST',
+        singleCharaModeCharaId === null
+          ? 'Various Artists'
+          : `${
+              db.masterDb.text_data.find(
+                (texEntry: any) =>
+                  texEntry.id === 6 && texEntry.category === 6 && texEntry.index === singleCharaModeCharaId,
+              ).text
+            } (CV: ${
+              db.masterDb.text_data.find(
+                (texEntry: any) =>
+                  texEntry.id === 7 && texEntry.category === 7 && texEntry.index === singleCharaModeCharaId,
+              ).text
+            })`,
+      ],
+      ...(() => {
+        if (singleCharaModeCharaId !== null) {
+          return [
             [
               'ARTIST',
               `${
                 db.masterDb.text_data.find(
-                  (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
+                  (texEntry: any) =>
+                    texEntry.id === 6 && texEntry.category === 6 && texEntry.index === singleCharaModeCharaId,
                 ).text
               } (CV: ${
                 db.masterDb.text_data.find(
-                  (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
+                  (texEntry: any) =>
+                    texEntry.id === 7 && texEntry.category === 7 && texEntry.index === singleCharaModeCharaId,
                 ).text
-              })` as string,
-            ] as [string, string],
-        ),
+              })`,
+            ],
+          ] as [string, string][];
+        } else {
+          return TypesAssetCsvStructure.musicScorePartTrackStringSortedArray
+            .map((key) => selectedSingChara[key])
+            .filter((val): val is number => val !== null)
+            .map(
+              (entry) =>
+                [
+                  'ARTIST',
+                  `${
+                    db.masterDb.text_data.find(
+                      (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
+                    ).text
+                  } (CV: ${
+                    db.masterDb.text_data.find(
+                      (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
+                    ).text
+                  })` as string,
+                ] as [string, string],
+            );
+        }
+      })(),
       // ...Object.values(selectedSingChara)
       //   .filter((entry) => entry !== null)
       //   .map(
@@ -1041,22 +1113,34 @@ async function processAudio(
         String(0),
         '--threading',
         '--artist',
-        TypesAssetCsvStructure.musicScorePartTrackStringSortedArray
-          .map((key) => selectedSingChara[key])
-          .filter((val): val is number => val !== null)
-          .map(
-            (entry) =>
-              `${
-                db.masterDb.text_data.find(
-                  (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
-                ).text
-              } (CV: ${
-                db.masterDb.text_data.find(
-                  (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
-                ).text
-              })`,
-          )
-          .join(', '),
+        singleCharaModeCharaId === null
+          ? TypesAssetCsvStructure.musicScorePartTrackStringSortedArray
+              .map((key) => selectedSingChara[key])
+              .filter((val): val is number => val !== null)
+              .map(
+                (entry) =>
+                  `${
+                    db.masterDb.text_data.find(
+                      (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
+                    ).text
+                  } (CV: ${
+                    db.masterDb.text_data.find(
+                      (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
+                    ).text
+                  })`,
+              )
+              .join(', ')
+          : `${
+              db.masterDb.text_data.find(
+                (texEntry: any) =>
+                  texEntry.id === 6 && texEntry.category === 6 && texEntry.index === singleCharaModeCharaId,
+              ).text
+            } (CV: ${
+              db.masterDb.text_data.find(
+                (texEntry: any) =>
+                  texEntry.id === 7 && texEntry.category === 7 && texEntry.index === singleCharaModeCharaId,
+              ).text
+            })`,
         // '--lyrics',
         // path.join(
         //   argvUtils.getArgv().outputDir,
