@@ -224,6 +224,7 @@ async function askToUserCharaId(
         right2: null,
         right3: null,
       };
+      let latestSelectUIPositionTargetIndex: number = 0;
       while (true) {
         const positionTargetIndex: number = (
           await prompts(
@@ -231,6 +232,7 @@ async function askToUserCharaId(
               type: 'select',
               name: 'value',
               message: `Map the chara to each position`,
+              initial: latestSelectUIPositionTargetIndex,
               choices: (() => {
                 const _ = [
                   ...availablePositionArray.map((str, index) => ({
@@ -240,7 +242,7 @@ async function askToUserCharaId(
                       ) +
                       ' - ' +
                       (!retObj[str]
-                        ? chalk.bold.red('Chara not selected')
+                        ? `${chalk.red('----')}: ${chalk.bold.red('Chara not selected')}`
                         : `${chalk.green(retObj[str])}: ${chalk.bold.green(
                             db.masterDb.text_data.find(
                               (texEntry: any) =>
@@ -267,6 +269,7 @@ async function askToUserCharaId(
             },
           )
         ).value;
+        latestSelectUIPositionTargetIndex = positionTargetIndex;
         process.stdout.write('\x1b[1A\x1b[2K');
         if (positionTargetIndex === -1) {
           break;
@@ -275,7 +278,11 @@ async function askToUserCharaId(
           await prompts({
             type: 'select',
             name: 'value',
-            message: `Select singing chara for '${availablePositionArray[positionTargetIndex]}' position`,
+            message: `Select singing chara for ${chalk.bold.cyan(availablePositionArray[positionTargetIndex])} position`,
+            initial:
+              retObj[availablePositionArray[positionTargetIndex]!] === null
+                ? 0
+                : liveCanUseCharaArray.findIndex((el) => el === retObj[availablePositionArray[positionTargetIndex]!]),
             choices: [
               ...liveCanUseCharaArray
                 // .filter((entry) => selectedCharaArray.includes(entry) === false) // to eliminate duplicates
@@ -293,6 +300,10 @@ async function askToUserCharaId(
                     ).text,
                   value: entry,
                 })),
+              {
+                title: '=== Back to position menu ===',
+                value: null,
+              },
             ],
           })
         ).value;
@@ -341,7 +352,7 @@ async function processAudio(
   },
   selectedSingChara: Record<TypesAssetCsvStructure.MusicscorePartTrackString, number | null>,
 ) {
-  const isOkeCheers: boolean = false;
+  const isOkeCheers: boolean = configUser.getConfig().audio.useCheersInst;
   const okeMetadataJsonPath = path.join(
     argvUtils.getArgv().outputDir,
     configUser.getConfig().file.outputSubPath.assets,
