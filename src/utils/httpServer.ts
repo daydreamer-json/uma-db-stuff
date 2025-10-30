@@ -1,11 +1,11 @@
-import bun from 'bun';
-import { Hono } from 'hono';
-import open from 'open';
-import logger from './logger';
-import exitUtils from './exit';
 // import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { getMimeType } from 'hono/utils/mime';
+import bun from 'bun';
+import { Hono } from 'hono';
+// import { getMimeType } from 'hono/utils/mime';
+import open from 'open';
+import exitUtils from './exit';
+import logger from './logger';
 
 async function main() {
   const app = new Hono();

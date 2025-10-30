@@ -1,9 +1,9 @@
 import bun from 'bun';
-import prompts from 'prompts';
 import chalk from 'chalk';
 import open from 'open';
-import logger from './logger';
+import prompts from 'prompts';
 import exitUtils from './exit';
+import logger from './logger';
 import subProcessUtils from './subProcess';
 
 async function checkRequirements() {

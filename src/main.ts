@@ -6,6 +6,7 @@ import childProcess from 'node:child_process';
 import util from 'node:util';
 import parseCommand from './cmd';
 import exitUtils from './utils/exit';
+
 const execPromise = util.promisify(childProcess.exec);
 
 async function main(): Promise<void> {

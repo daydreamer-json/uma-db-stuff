@@ -1,12 +1,12 @@
 import argvUtils from '../utils/argv';
-import downloadUtils from '../utils/download';
-import dbUtils from '../utils/db';
 import assetsUtils from '../utils/assets';
-import logger from '../utils/logger';
+import dbUtils from '../utils/db';
+import downloadUtils from '../utils/download';
 import exitUtils from '../utils/exit';
+import logger from '../utils/logger';
 
 async function mainCmdHandler() {
-  const regex = new RegExp(`^.*${argvUtils.getArgv().path}.*\\.(acf|acb|awb)$`, 'g');
+  const regex = new RegExp(`^.*${argvUtils.getArgv()['path']}.*\\.(acf|acb|awb)$`, 'g');
   if ((await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)).length == 0) {
     logger.error(`No assets were found that hit the pattern: ${regex}`);
     await exitUtils.pressAnyKeyToExit(1);

@@ -1,24 +1,22 @@
 import fs from 'node:fs';
-import bun from 'bun';
 import path from 'node:path';
-import YAML from 'yaml';
+import * as zstd from '@mongodb-js/zstd';
+import bun from 'bun';
 import cliProgress from 'cli-progress';
 import { DateTime } from 'luxon';
-import * as zstd from '@mongodb-js/zstd';
 import prompts from 'prompts';
+import YAML from 'yaml';
+import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
+import argvUtils from '../utils/argv';
+import assetsUtils from '../utils/assets';
 import appConfig from '../utils/config';
 import configUser from '../utils/configUser';
-import logger from '../utils/logger';
 import dbUtils from '../utils/db';
-import argvUtils from '../utils/argv';
-import mathUtils from '../utils/math';
-import exitUtils from '../utils/exit';
-import markdownTableUtils from '../utils/markdownTable';
 import downloadUtils from '../utils/download';
-import assetsUtils from '../utils/assets';
 import htmlBuildUtils from '../utils/htmlBuild';
 import httpServerUtils from '../utils/httpServer';
-import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
+import logger from '../utils/logger';
+import mathUtils from '../utils/math';
 
 async function mainCmdHandler() {
   const db = await dbUtils.getDb();
@@ -27,17 +25,22 @@ async function mainCmdHandler() {
   };
   logger.info('Exporting database to file ...');
   const dirObj = {
-    root: path.join(argvUtils.getArgv().outputDir, configUser.getConfig().file.outputSubPath.db),
+    root: path.join(argvUtils.getArgv()['outputDir'], configUser.getConfig().file.outputSubPath.db),
     master: {
       minJson: path.join(
-        argvUtils.getArgv().outputDir,
+        argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.db,
         'master',
         'min-json',
       ),
-      json: path.join(argvUtils.getArgv().outputDir, configUser.getConfig().file.outputSubPath.db, 'master', 'json'),
-      jsonl: path.join(argvUtils.getArgv().outputDir, configUser.getConfig().file.outputSubPath.db, 'master', 'jsonl'),
-      yaml: path.join(argvUtils.getArgv().outputDir, configUser.getConfig().file.outputSubPath.db, 'master', 'yaml'),
+      json: path.join(argvUtils.getArgv()['outputDir'], configUser.getConfig().file.outputSubPath.db, 'master', 'json'),
+      jsonl: path.join(
+        argvUtils.getArgv()['outputDir'],
+        configUser.getConfig().file.outputSubPath.db,
+        'master',
+        'jsonl',
+      ),
+      yaml: path.join(argvUtils.getArgv()['outputDir'], configUser.getConfig().file.outputSubPath.db, 'master', 'yaml'),
     },
   };
   await (async () => {
@@ -60,7 +63,7 @@ async function mainCmdHandler() {
       //* Export masterDb
       logger.debug('Exporting masterDb ...');
       const tablesName = Object.keys(db.masterDb);
-      const progressBar = !argvUtils.getArgv().noShowProgress
+      const progressBar = !argvUtils.getArgv()['noShowProgress']
         ? new cliProgress.SingleBar({
             format: '{bar} {percentageFmt}% | {valueFmt} / {totalFmt} | {tableName}',
             ...appConfig.logger.progressBarConfig,
@@ -83,7 +86,7 @@ async function mainCmdHandler() {
         await bun.write(path.join(dirObj.master.json, key + '.json'), JSON.stringify(db.masterDb[key], null, 2));
         await bun.write(path.join(dirObj.master.jsonl, key + '.jsonl'), jsonlStringify(db.masterDb[key]));
         await bun.write(path.join(dirObj.master.yaml, key + '.yaml'), YAML.stringify(db.masterDb[key]));
-        argvUtils.getArgv().noShowProgress ? logger.trace(`Exported master database': '${key}'`) : null;
+        argvUtils.getArgv()['noShowProgress'] ? logger.trace(`Exported master database': '${key}'`) : null;
         loadedCount++;
         progressBar?.update(loadedCount, {
           tableName: tablesName[loadedCount] ?? '',
@@ -106,7 +109,7 @@ async function mainCmdHandler() {
           (await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)),
         );
       }
-      const livesFiltered = db.masterDb.live_data.filter((entry: any) => entry.has_live === 1);
+      const livesFiltered = db.masterDb['live_data'].filter((entry: any) => entry.has_live === 1);
       const outArr: {
         id: number;
         cyalume: TypesAssetCsvStructure.MusicscoreCyalumeOrig[];
@@ -120,7 +123,7 @@ async function mainCmdHandler() {
           cyalume: await bun
             .file(
               path.join(
-                argvUtils.getArgv().outputDir,
+                argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 `live/musicscores/m${liveId}/m${liveId}_cyalume.json`,
@@ -130,7 +133,7 @@ async function mainCmdHandler() {
           lyrics: await bun
             .file(
               path.join(
-                argvUtils.getArgv().outputDir,
+                argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 `live/musicscores/m${liveId}/m${liveId}_lyrics.json`,
@@ -140,7 +143,7 @@ async function mainCmdHandler() {
           part: await bun
             .file(
               path.join(
-                argvUtils.getArgv().outputDir,
+                argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 `live/musicscores/m${liveId}/m${liveId}_part.json`,
@@ -180,10 +183,11 @@ async function mainCmdHandler() {
         await assetsUtils.extractCriAudioAssets((await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)));
       }
       const transformedDb = {
-        charas: db.masterDb.chara_data.map((chara: any) => ({
+        charas: db.masterDb['chara_data'].map((chara: any) => ({
           id: parseInt(chara.id),
-          name: db.masterDb.text_data.find((el: any) => el.id === 6 && el.category === 6 && el.index === chara.id).text,
-          actor: db.masterDb.text_data.find((el: any) => el.id === 7 && el.category === 7 && el.index === chara.id)
+          name: db.masterDb['text_data'].find((el: any) => el.id === 6 && el.category === 6 && el.index === chara.id)
+            .text,
+          actor: db.masterDb['text_data'].find((el: any) => el.id === 7 && el.category === 7 && el.index === chara.id)
             .text,
           sex: chara.sex === 1 ? 'M' : 'F',
           height: chara.height,
@@ -208,37 +212,38 @@ async function mainCmdHandler() {
           lastYear: chara.last_year === 1800 ? '-' : String(chara.last_year),
           availableAt: chara.start_date,
         })),
-        lives: db.masterDb.live_data
+        lives: db.masterDb['live_data']
           .filter((live: any) => live.has_live === 1)
           .map((live: any) => ({
             id: parseInt(live.music_id),
-            title: db.masterDb.text_data.find(
+            title: db.masterDb['text_data'].find(
               (el: any) => el.id === 16 && el.category === 16 && el.index === live.music_id,
             ).text,
-            desc: db.masterDb.text_data
+            desc: db.masterDb['text_data']
               .find((el: any) => el.id === 128 && el.category === 128 && el.index === live.music_id)
               .text.replaceAll('\\n', '<br>'),
-            credit: db.masterDb.text_data
+            credit: db.masterDb['text_data']
               .find((el: any) => el.id === 17 && el.category === 17 && el.index === live.music_id)
               .text.replaceAll('\\n', '<br>'),
             startAt: live.start_date,
             expireAt: live.end_date,
           })),
-        liveAvail: db.masterDb.chara_data
+        liveAvail: db.masterDb['chara_data']
           .map((chara: any) => {
             const retObj: Record<string, any> = {
               id: chara.id,
-              name: db.masterDb.text_data.find((el: any) => el.id === 6 && el.category === 6 && el.index === chara.id)
-                .text,
+              name: db.masterDb['text_data'].find(
+                (el: any) => el.id === 6 && el.category === 6 && el.index === chara.id,
+              ).text,
             };
             let canSing = false;
-            db.masterDb.live_data
+            db.masterDb['live_data']
               .filter((live: any) => live.has_live === 1)
               .forEach((live: any) => {
                 retObj[String(live.music_id)] = (() => {
                   if (
                     (live.song_chara_type === 1 && chara.start_date < DateTime.now().toSeconds()) ||
-                    db.masterDb.live_permission_data.some(
+                    db.masterDb['live_permission_data'].some(
                       (el: any) => el.music_id === live.music_id && el.chara_id === chara.id,
                     )
                   ) {
@@ -252,7 +257,7 @@ async function mainCmdHandler() {
           })
           .filter((el: any) => el !== null),
         livePreviewLoopingInfo: await (async () => {
-          const targetLiveIds: number[] = db.masterDb.live_data
+          const targetLiveIds: number[] = db.masterDb['live_data']
             .filter((live: any) => live.has_live === 1)
             .map((live: any) => live.music_id);
           const retArr = [];
@@ -275,7 +280,7 @@ async function mainCmdHandler() {
         })(),
         charaPreviewAudioSubsongInfo: await (async () => {
           const retArr = [];
-          for (const chara of db.masterDb.chara_data) {
+          for (const chara of db.masterDb['chara_data']) {
             if (chara.start_date < DateTime.now().toSeconds()) {
               const rspJson = await bun
                 .file(

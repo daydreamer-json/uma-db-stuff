@@ -1,7 +1,7 @@
-import bun from 'bun';
 import path from 'node:path';
-import YAML from 'yaml';
+import bun from 'bun';
 import deepmerge from 'deepmerge';
+import YAML from 'yaml';
 
 type Freeze<T> = Readonly<{
   [P in keyof T]: T[P] extends object ? Freeze<T[P]> : T[P];

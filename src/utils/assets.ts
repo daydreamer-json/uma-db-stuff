@@ -1,32 +1,31 @@
-import fs from 'node:fs';
-import bun from 'bun';
-import path from 'node:path';
-import cliProgress from 'cli-progress';
-import chalk from 'chalk';
 import EventEmitter from 'node:events';
-import logger from './logger';
+import fs from 'node:fs';
+import path from 'node:path';
+import bun from 'bun';
+import chalk from 'chalk';
+import cliProgress from 'cli-progress';
+import * as TypesAssetEntry from '../types/AssetEntry';
 import argvUtils from './argv';
+import assetTextUtils from './assetText';
 import appConfig from './config';
 import configUser from './configUser';
-import * as TypesAssetEntry from '../types/AssetEntry';
 import dbUtils from './db';
 import fileUtils from './file';
-import subProcessUtils from './subProcess';
-import assetTextUtils from './assetText';
-import vgmUtils from './vgm';
+import logger from './logger';
 import mathUtils from './math';
+import subProcessUtils from './subProcess';
+import vgmUtils from './vgm';
 
 async function extractUnityAssetBundles(
   assetEntries: (TypesAssetEntry.AssetDbConvertedEntry & { isFileExists: boolean })[],
 ) {
   if (assetEntries.filter((el) => !el.isFileExists).length > 0) {
     throw new Error('Please execute downloadMissingAssets command');
-    return;
   }
   await new Promise<void>(async (resolve) => {
     logger.info('Extracting Unity asset bundles ...');
     const progressBar =
-      argvUtils.getArgv().noShowProgress === false
+      argvUtils.getArgv()['noShowProgress'] === false
         ? new cliProgress.SingleBar({
             format: '{bar} {percentageFmt}% | {valueFmt} / {totalFmt} | {name}',
             ...appConfig.logger.progressBarConfig,
@@ -47,7 +46,7 @@ async function extractUnityAssetBundles(
     });
     const processEmitter = new EventEmitter();
     const waitForAvailableThread = async () => {
-      if (activeProcessingCount < argvUtils.getArgv().threadProcessing) return;
+      if (activeProcessingCount < argvUtils.getArgv()['threadProcessing']) return;
       await new Promise((resolve) => processEmitter.once('threadAvailable', resolve));
     };
     for (let i = 0; i < assetEntries.length; i++) {
@@ -59,7 +58,7 @@ async function extractUnityAssetBundles(
             const files = await fileUtils.getFileList(
               path.dirname(
                 path.join(
-                  argvUtils.getArgv().outputDir,
+                  argvUtils.getArgv()['outputDir'],
                   configUser.getConfig().file.outputSubPath.assets,
                   configUser.getConfig().file.assetUnityInternalPathDir,
                   assetEntries[i]!.name,
@@ -84,7 +83,7 @@ async function extractUnityAssetBundles(
                   assetEntries[i]!.hash,
                 ),
                 '--output',
-                argvUtils.getArgv().outputDir,
+                argvUtils.getArgv()['outputDir'],
               ],
               {},
               false,
@@ -94,7 +93,7 @@ async function extractUnityAssetBundles(
         if (assetEntries[i]!.name.match(/^live\/musicscores\//)) {
           await assetTextUtils.parseCsvFile(
             path.join(
-              argvUtils.getArgv().outputDir,
+              argvUtils.getArgv()['outputDir'],
               configUser.getConfig().file.outputSubPath.assets,
               configUser.getConfig().file.assetUnityInternalPathDir,
               assetEntries[i]!.name + '.csv',
@@ -108,7 +107,7 @@ async function extractUnityAssetBundles(
           name: assetEntries[i + 1] ? assetEntries[i + 1]!.name : assetEntries[i]!.name,
           ...progressBarFormatter(processedAssetEntry.length, assetEntries.length),
         });
-        if (activeProcessingCount < argvUtils.getArgv().threadProcessing) {
+        if (activeProcessingCount < argvUtils.getArgv()['threadProcessing']) {
           processEmitter.emit('threadAvailable');
         }
         if (processedAssetEntry.length === assetEntries.length) {
@@ -131,7 +130,7 @@ async function extractCriAudioAssets(
     await new Promise<void>(async (resolve) => {
       logger.info('Analyzing CRI codec metadata ...');
       const progressBar =
-        argvUtils.getArgv().noShowProgress === false
+        argvUtils.getArgv()['noShowProgress'] === false
           ? new cliProgress.SingleBar({
               format: '{bar} {percentageFmt}% | {valueFmt} / {totalFmt} | {name}',
               ...appConfig.logger.progressBarConfig,
@@ -152,7 +151,7 @@ async function extractCriAudioAssets(
       let activeProcessingCount = 0;
       const processEmitter = new EventEmitter();
       const waitForAvailableThread = async () => {
-        if (activeProcessingCount < argvUtils.getArgv().threadProcessing) {
+        if (activeProcessingCount < argvUtils.getArgv()['threadProcessing']) {
           return;
         }
         await new Promise((resolve) => {
@@ -166,7 +165,7 @@ async function extractCriAudioAssets(
           await fs.promises.mkdir(
             path.dirname(
               path.join(
-                argvUtils.getArgv().outputDir,
+                argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 assetEntries[i]!.name,
@@ -179,7 +178,7 @@ async function extractCriAudioAssets(
             'mklink',
             [
               `"${path.join(
-                argvUtils.getArgv().outputDir,
+                argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 assetEntries[i]!.name,
@@ -195,7 +194,7 @@ async function extractCriAudioAssets(
           );
           const cmdLineEntry = await vgmUtils.generateCmdSingleFileAudio(
             path.join(
-              argvUtils.getArgv().outputDir,
+              argvUtils.getArgv()['outputDir'],
               configUser.getConfig().file.outputSubPath.assets,
               configUser.getConfig().file.assetUnityInternalPathDir,
               assetEntries[i]!.name,
@@ -209,7 +208,7 @@ async function extractCriAudioAssets(
             name: assetEntries[i + 1] ? assetEntries[i + 1]!.name : assetEntries[i]!.name,
             ...progressBarFormatter(processedAssetEntry.length, assetEntries.length),
           });
-          if (activeProcessingCount < argvUtils.getArgv().threadProcessing) {
+          if (activeProcessingCount < argvUtils.getArgv()['threadProcessing']) {
             processEmitter.emit('threadAvailable');
           }
           if (processedAssetEntry.length === assetEntries.length) {
@@ -226,7 +225,7 @@ async function extractCriAudioAssets(
   await new Promise<void>(async (resolve) => {
     logger.info('Encoding CRI audio data ...');
     const progressBar =
-      argvUtils.getArgv().noShowProgress === false
+      argvUtils.getArgv()['noShowProgress'] === false
         ? new cliProgress.SingleBar({
             format: '{bar} {percentageFmt}% | {valueFmt} / {totalFmt} proc | {duration_formatted} / {eta_formatted}',
             ...appConfig.logger.progressBarConfig,
@@ -248,7 +247,7 @@ async function extractCriAudioAssets(
     let activeProcessingCount = 0;
     const processEmitter = new EventEmitter();
     const waitForAvailableThread = async () => {
-      if (activeProcessingCount < argvUtils.getArgv().threadProcessing) {
+      if (activeProcessingCount < argvUtils.getArgv()['threadProcessing']) {
         return;
       }
       await new Promise((resolve) => {
@@ -266,7 +265,7 @@ async function extractCriAudioAssets(
         processedCmdEntry.push(cmdLineArray[i]!);
         activeProcessingCount--;
         progressBar?.increment(1, progressBarFormatter(processedCmdEntry.length, cmdLineArray.length));
-        if (activeProcessingCount < argvUtils.getArgv().threadProcessing) {
+        if (activeProcessingCount < argvUtils.getArgv()['threadProcessing']) {
           processEmitter.emit('threadAvailable');
         }
         if (processedCmdEntry.length === cmdLineArray.length) {
@@ -279,7 +278,7 @@ async function extractCriAudioAssets(
       for (const entry of assetEntries) {
         await fs.promises.rm(
           path.join(
-            argvUtils.getArgv().outputDir,
+            argvUtils.getArgv()['outputDir'],
             configUser.getConfig().file.outputSubPath.assets,
             configUser.getConfig().file.assetUnityInternalPathDir,
             entry.name,

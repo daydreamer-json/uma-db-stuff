@@ -1,4 +1,3 @@
-import argvUtils from '../utils/argv';
 import audioGenerateUtils from '../utils/audioGenerate';
 
 async function mainCmdHandler() {

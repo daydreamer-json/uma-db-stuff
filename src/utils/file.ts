@@ -1,10 +1,9 @@
-import bun from 'bun';
 import fs from 'node:fs';
 import path from 'node:path';
+import bun from 'bun';
 import prompts from 'prompts';
-import logger from './logger';
 import configUser from './configUser';
-import exitUtils from './exit';
+import logger from './logger';
 
 async function resolveGameDir() {
   if (
@@ -80,12 +79,13 @@ async function tryAutoResolveGameDir(): Promise<string | null> {
   // ない場合は(最後に)Cドライブをスキャンする
   //! D-Zまですべてスキャンしたときのオーバーヘッドは未知
   const targetFileName = 'meta';
-  const userProfilePath = process.env.USERPROFILE?.replace(path.parse(process.env.USERPROFILE).root, '');
+  const userProfilePath = process.env['USERPROFILE']?.replace(path.parse(process.env['USERPROFILE']).root, '');
   const driveLetterArray = [...Array.from({ length: 26 }, (_, i) => String.fromCharCode(68 + i)), 'A', 'B', 'C']; // D-Z+A+B+C
   const suggestedTargetPathArray = [
     '/Games/Cygames/umamusume/' + targetFileName,
     '/Games/Umamusume/Cygames/umamusume/' + targetFileName,
     '/Games/umamusume/Cygames/umamusume/' + targetFileName,
+    '/Games/Umamusume/res',
     '/' + userProfilePath + '/AppData/LocalLow/Cygames/umamusume/' + targetFileName,
   ];
   for (const driveLetter of driveLetterArray) {

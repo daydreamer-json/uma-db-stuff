@@ -1,48 +1,45 @@
-import bun from 'bun';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import util from 'node:util';
-import child_process from 'node:child_process';
-import prompts from 'prompts';
+import bun from 'bun';
+import chalk from 'chalk';
 import ffmpeg from 'fluent-ffmpeg';
 import { DateTime } from 'luxon';
-import chalk from 'chalk';
-import logger from './logger';
+import prompts from 'prompts';
+import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
 import argvUtils from './argv';
-import dbUtils from './db';
-import appConfig from './config';
-import configUser from './configUser';
-import downloadUtils from './download';
 import assetsUtils from './assets';
+import appConfig from './config';
+import configEmbed from './configEmbed';
+import configUser from './configUser';
+import dbUtils from './db';
+import downloadUtils from './download';
+import exitUtils from './exit';
+import logger from './logger';
 import mathUtils from './math';
 import reaperUtils from './reaper';
 import subProcessUtils from './subProcess';
-import configEmbed from './configEmbed';
-import exitUtils from './exit';
-import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
-const execPromise = util.promisify(child_process.exec);
 
 async function askToUserLiveId(): Promise<number> {
   const db = (await dbUtils.getDb()).masterDb;
-  const liveId = argvUtils.getArgv().liveId
-    ? parseInt(argvUtils.getArgv().liveId)
+  const liveId = argvUtils.getArgv()['liveId']
+    ? parseInt(argvUtils.getArgv()['liveId'])
     : (
         await prompts({
           type: 'select',
           name: 'value',
           message: 'Select live track',
           // initial: 0,
-          choices: db.live_data
+          choices: db['live_data']
             .filter((entry: any) => entry.has_live === 1)
             .map((entry: any) => ({
               title:
                 entry.music_id +
                 ': ' +
-                db.text_data.find(
+                db['text_data'].find(
                   (texEntry: any) =>
                     texEntry.id === 16 && texEntry.category === 16 && texEntry.index === entry.music_id,
                 ).text,
-              description: db.text_data
+              description: db['text_data']
                 .find(
                   (texEntry: any) =>
                     texEntry.id === 128 && texEntry.category === 128 && texEntry.index === entry.music_id,
@@ -52,18 +49,18 @@ async function askToUserLiveId(): Promise<number> {
             })),
         })
       ).value;
-  if (!argvUtils.getArgv().liveId) process.stdout.write('\x1b[1A\x1b[2K');
+  if (!argvUtils.getArgv()['liveId']) process.stdout.write('\x1b[1A\x1b[2K');
   console.log(
     'Selected live track: ' +
       liveId +
       ': ' +
       chalk.bold.green(
-        db.text_data.find(
+        db['text_data'].find(
           (texEntry: any) => texEntry.id === 16 && texEntry.category === 16 && texEntry.index === liveId,
         ).text,
       ),
   );
-  if (!db.live_data.find((entry: { [key: string]: any }) => entry.music_id === liveId)) {
+  if (!db['live_data'].find((entry: { [key: string]: any }) => entry['music_id'] === liveId)) {
     throw new Error(`live '${liveId}' not found`);
   }
   return liveId;
@@ -77,19 +74,19 @@ async function loadMusicScoreJson(liveId: number): Promise<{
   const db = await dbUtils.getDb();
   const filePaths = {
     cyalume: path.join(
-      argvUtils.getArgv().outputDir,
+      argvUtils.getArgv()['outputDir'],
       configUser.getConfig().file.outputSubPath.assets,
       configUser.getConfig().file.assetUnityInternalPathDir,
       `live/musicscores/m${liveId}/m${liveId}_cyalume.json`,
     ),
     lyrics: path.join(
-      argvUtils.getArgv().outputDir,
+      argvUtils.getArgv()['outputDir'],
       configUser.getConfig().file.outputSubPath.assets,
       configUser.getConfig().file.assetUnityInternalPathDir,
       `live/musicscores/m${liveId}/m${liveId}_lyrics.json`,
     ),
     part: path.join(
-      argvUtils.getArgv().outputDir,
+      argvUtils.getArgv()['outputDir'],
       configUser.getConfig().file.outputSubPath.assets,
       configUser.getConfig().file.assetUnityInternalPathDir,
       `live/musicscores/m${liveId}/m${liveId}_part.json`,
@@ -129,20 +126,20 @@ async function askToUserCharaId(
 ) {
   const db = await dbUtils.getDb();
   const liveCanUseCharaArray: number[] = (() => {
-    const songCharaType = db.masterDb.live_data.find((entry: any) => entry.music_id === liveId).song_chara_type;
+    const songCharaType = db.masterDb['live_data'].find((entry: any) => entry.music_id === liveId).song_chara_type;
     if (songCharaType === 1) {
       // all charas available
       return [
-        ...db.masterDb.chara_data
+        ...db.masterDb['chara_data']
           .filter((entry: any) => entry.start_date < DateTime.now().toSeconds())
           .map((entry: any) => entry.id),
-        ...db.masterDb.live_permission_data
+        ...db.masterDb['live_permission_data']
           .filter((entry: any) => entry.music_id === liveId)
           .map((entry: any) => entry.chara_id),
       ];
     } else if (songCharaType === 2) {
       // only some charas available
-      return db.masterDb.live_permission_data
+      return db.masterDb['live_permission_data']
         .filter((entry: any) => entry.music_id === liveId)
         .map((entry: any) => entry.chara_id);
     }
@@ -152,11 +149,11 @@ async function askToUserCharaId(
       .filter((el) => el[1])
       .map((el) => el[0]);
     const selectedCharaArray: number[] = [];
-    if (argvUtils.getArgv().charaIds) {
+    if (argvUtils.getArgv()['charaIds']) {
       const argParsed = (() => {
         const orig: (number | null)[] = argvUtils
           .getArgv()
-          .charaIds.trim()
+          ['charaIds'].trim()
           .replace(/,$/, '')
           .split(',')
           .map((str: string) => parseInt(str))
@@ -214,13 +211,13 @@ async function askToUserCharaId(
                       (!retObj[str]
                         ? `${chalk.red('----')}: ${chalk.bold.red('Chara not selected')}`
                         : `${chalk.green(retObj[str])}: ${chalk.bold.green(
-                            db.masterDb.text_data.find(
+                            db.masterDb['text_data'].find(
                               (texEntry: any) =>
                                 texEntry.id === 6 && texEntry.category === 6 && texEntry.index === retObj[str],
                             ).text,
                           )} ${chalk.gray(
                             `(CV: ${
-                              db.masterDb.text_data.find(
+                              db.masterDb['text_data'].find(
                                 (texEntry: any) =>
                                   texEntry.id === 7 && texEntry.category === 7 && texEntry.index === retObj[str],
                               ).text
@@ -267,12 +264,12 @@ async function askToUserCharaId(
                   title:
                     entry +
                     ': ' +
-                    db.masterDb.text_data.find(
+                    db.masterDb['text_data'].find(
                       (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
                     ).text,
                   description:
                     'CV: ' +
-                    db.masterDb.text_data.find(
+                    db.masterDb['text_data'].find(
                       (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
                     ).text,
                   value: entry,
@@ -296,12 +293,12 @@ async function askToUserCharaId(
         .map(
           (el) =>
             `${chalk.bold.cyan(el[0].padEnd(6))} -> ${el[1]}: ${chalk.bold.green(
-              db.masterDb.text_data.find(
+              db.masterDb['text_data'].find(
                 (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === el[1],
               ).text,
             )} ${chalk.gray(
               '(CV: ' +
-                db.masterDb.text_data.find(
+                db.masterDb['text_data'].find(
                   (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === el[1],
                 ).text +
                 ')',
@@ -313,7 +310,7 @@ async function askToUserCharaId(
 }
 
 async function generateMain() {
-  const db = await dbUtils.getDb();
+  // const db = await dbUtils.getDb();
   const userInputLiveId = await askToUserLiveId();
   const musicScoreData = await loadMusicScoreJson(userInputLiveId);
   const selectedSingChara = await askToUserCharaId(userInputLiveId, musicScoreData);
@@ -331,7 +328,7 @@ async function processAudio(
 ) {
   const isOkeCheers: boolean = configUser.getConfig().audio.useCheersInst;
   const okeMetadataJsonPath = path.join(
-    argvUtils.getArgv().outputDir,
+    argvUtils.getArgv()['outputDir'],
     configUser.getConfig().file.outputSubPath.assets,
     configUser.getConfig().file.assetUnityInternalPathDir,
     `sound/l/${liveId}/snd_bgm_live_${liveId}_oke_${isOkeCheers ? '01' : '02'}.awb.json`,
@@ -355,7 +352,7 @@ async function processAudio(
           !(await bun
             .file(
               path.join(
-                argvUtils.getArgv().outputDir,
+                argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 `sound/l/${liveId}/snd_bgm_live_${liveId}_chara_${charaId}_01.awb.json`,
@@ -385,7 +382,7 @@ async function processAudio(
   const db = await dbUtils.getDb();
   ffmpeg.setFfmpegPath(path.resolve(appConfig.file.cliPath.ffmpeg));
   await fs.rm(
-    path.join(argvUtils.getArgv().outputDir, configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
+    path.join(argvUtils.getArgv()['outputDir'], configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
     { recursive: true, force: true },
   );
   const positionList = Object.entries(musicScoreData.part.availableTrack)
@@ -396,8 +393,8 @@ async function processAudio(
     .every((val, _, arr) => val === arr[0])
     ? (Object.values(selectedSingChara).filter((el) => el !== null)[0] as number)
     : null;
-  const okeMetadataJson = await bun.file(okeMetadataJsonPath).json();
-  const liveSongDurationMs = Math.ceil((okeMetadataJson[0].numberOfSamples / okeMetadataJson[0].sampleRate) * 1000);
+  // const okeMetadataJson = await bun.file(okeMetadataJsonPath).json();
+  // const liveSongDurationMs = Math.ceil((okeMetadataJson[0].numberOfSamples / okeMetadataJson[0].sampleRate) * 1000);
   const timeStartEndArray: { startMs: number; endMs: number }[] = (() => {
     const tmpArr = new Array();
     for (let i = 0; i < musicScoreData.part.part.length; i++) {
@@ -417,7 +414,7 @@ async function processAudio(
     logger.info(chalk.gray('[Live Audio] ') + 'Extracting audio segments ...');
     await fs.mkdir(
       path.join(
-        argvUtils.getArgv().outputDir,
+        argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'split_orig',
@@ -430,7 +427,7 @@ async function processAudio(
           await new Promise((resolve, reject) => {
             ffmpeg(
               path.join(
-                argvUtils.getArgv().outputDir,
+                argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 `sound/l/${liveId}`,
@@ -447,7 +444,7 @@ async function processAudio(
               .audioCodec('pcm_f32le')
               .output(
                 path.join(
-                  argvUtils.getArgv().outputDir,
+                  argvUtils.getArgv()['outputDir'],
                   configUser.getConfig().file.outputSubPath.renderedAudio,
                   'tmp',
                   'split_orig',
@@ -466,7 +463,7 @@ async function processAudio(
     logger.info(chalk.gray('[Live Audio] ') + 'Processing audio segments ...');
     await fs.mkdir(
       path.join(
-        argvUtils.getArgv().outputDir,
+        argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'split_processed',
@@ -508,7 +505,7 @@ async function processAudio(
             await new Promise((resolve, reject) => {
               ffmpeg(
                 path.join(
-                  argvUtils.getArgv().outputDir,
+                  argvUtils.getArgv()['outputDir'],
                   configUser.getConfig().file.outputSubPath.renderedAudio,
                   'tmp',
                   'split_orig',
@@ -525,7 +522,7 @@ async function processAudio(
                 .audioCodec('pcm_f32le')
                 .output(
                   path.join(
-                    argvUtils.getArgv().outputDir,
+                    argvUtils.getArgv()['outputDir'],
                     configUser.getConfig().file.outputSubPath.renderedAudio,
                     'tmp',
                     'split_processed',
@@ -542,7 +539,7 @@ async function processAudio(
     }
     await fs.rm(
       path.join(
-        argvUtils.getArgv().outputDir,
+        argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'split_orig',
@@ -558,7 +555,7 @@ async function processAudio(
     for (const positionKey of positionList) {
       await fs.mkdir(
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'tmp',
           'concat_processed',
@@ -571,7 +568,7 @@ async function processAudio(
         await (async () => {
           const inputFiles = timeStartEndArray.map((entry) => {
             return path.join(
-              argvUtils.getArgv().outputDir,
+              argvUtils.getArgv()['outputDir'],
               configUser.getConfig().file.outputSubPath.renderedAudio,
               'tmp',
               'split_processed',
@@ -595,7 +592,7 @@ async function processAudio(
               .audioCodec('pcm_f32le')
               .output(
                 path.join(
-                  argvUtils.getArgv().outputDir,
+                  argvUtils.getArgv()['outputDir'],
                   configUser.getConfig().file.outputSubPath.renderedAudio,
                   'tmp',
                   'concat_processed',
@@ -611,7 +608,7 @@ async function processAudio(
     }
     await fs.rm(
       path.join(
-        argvUtils.getArgv().outputDir,
+        argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'split_processed',
@@ -627,14 +624,14 @@ async function processAudio(
   logger.info(chalk.gray('[Live Audio] ') + 'Mixing audio tracks ...');
   if (singleCharaModeCharaId !== null)
     await fs.mkdir(
-      path.join(argvUtils.getArgv().outputDir, configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
+      path.join(argvUtils.getArgv()['outputDir'], configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
       { recursive: true },
     );
   await (async () => {
     const inputFiles: string[] = [];
     inputFiles.push(
       path.join(
-        argvUtils.getArgv().outputDir,
+        argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.assets,
         configUser.getConfig().file.assetUnityInternalPathDir,
         `sound/l/${liveId}/snd_bgm_live_${liveId}_oke_${isOkeCheers ? (liveId === 1151 ? '01_01' : '01') : '02'}.awb.flac`,
@@ -646,7 +643,7 @@ async function processAudio(
         for (let subSongIndex = 0; subSongIndex < subSongCount; subSongIndex++) {
           inputFiles.push(
             path.join(
-              argvUtils.getArgv().outputDir,
+              argvUtils.getArgv()['outputDir'],
               configUser.getConfig().file.outputSubPath.renderedAudio,
               'tmp',
               'concat_processed',
@@ -659,7 +656,7 @@ async function processAudio(
       for (let subSongIndex = 0; subSongIndex < subSongCount; subSongIndex++) {
         inputFiles.push(
           path.join(
-            argvUtils.getArgv().outputDir,
+            argvUtils.getArgv()['outputDir'],
             configUser.getConfig().file.outputSubPath.assets,
             configUser.getConfig().file.assetUnityInternalPathDir,
             `sound/l/${liveId}`,
@@ -694,7 +691,7 @@ async function processAudio(
         .outputOptions(['-map [aout]'])
         .output(
           path.join(
-            argvUtils.getArgv().outputDir,
+            argvUtils.getArgv()['outputDir'],
             configUser.getConfig().file.outputSubPath.renderedAudio,
             'tmp',
             `l${liveId}_mix_raw.wav`,
@@ -708,7 +705,7 @@ async function processAudio(
   if (singleCharaModeCharaId === null)
     await fs.rm(
       path.join(
-        argvUtils.getArgv().outputDir,
+        argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'concat_processed',
@@ -720,7 +717,7 @@ async function processAudio(
     );
 
   const baseFilename = `${liveId}_${
-    db.masterDb.text_data.find(
+    db.masterDb['text_data'].find(
       (texEntry: any) => texEntry.id === 16 && texEntry.category === 16 && texEntry.index === liveId,
     ).text
   }_${
@@ -730,12 +727,12 @@ async function processAudio(
           .filter((val): val is number => val !== null)
           .map(
             (entry) =>
-              db.masterDb.text_data.find(
+              db.masterDb['text_data'].find(
                 (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
               ).text,
           )
           .join('_')
-      : db.masterDb.text_data.find(
+      : db.masterDb['text_data'].find(
           (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === singleCharaModeCharaId,
         ).text
   }`;
@@ -749,7 +746,7 @@ async function processAudio(
       await new Promise((resolve, reject) => {
         ffmpeg(
           path.join(
-            argvUtils.getArgv().outputDir,
+            argvUtils.getArgv()['outputDir'],
             configUser.getConfig().file.outputSubPath.renderedAudio,
             'tmp',
             `l${liveId}_mix_raw.wav`,
@@ -776,14 +773,14 @@ async function processAudio(
     await bun.write(
       bun.file(
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'mix_orig_' + baseFilename + '.wav',
         ),
       ),
       bun.file(
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'tmp',
           `l${liveId}_mix_raw.wav`,
@@ -804,18 +801,18 @@ async function processAudio(
       await reaperUtils.reaperCleaning();
       await reaperUtils.tr5StealthLimiter_runPlugin(
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'tmp',
           `l${liveId}_mix_raw.wav`,
         ),
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'mix_norm_' + baseFilename + '.wav',
         ),
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'tmp',
           `reaper_batch.conf`,
@@ -839,7 +836,7 @@ async function processAudio(
           '-S', // --show-progress
           '-V3', // verbosity
           path.join(
-            argvUtils.getArgv().outputDir,
+            argvUtils.getArgv()['outputDir'],
             configUser.getConfig().file.outputSubPath.renderedAudio,
             'tmp',
             `l${liveId}_mix_raw.wav`,
@@ -851,7 +848,7 @@ async function processAudio(
           '--encoding',
           'signed-integer',
           path.join(
-            argvUtils.getArgv().outputDir,
+            argvUtils.getArgv()['outputDir'],
             configUser.getConfig().file.outputSubPath.renderedAudio,
             'mix_norm_' + baseFilename + '.wav',
           ),
@@ -886,12 +883,12 @@ async function processAudio(
         'subdivide_tukey(5)',
         '-o',
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'mix_norm_' + baseFilename + '.flac',
         ),
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'mix_norm_' + baseFilename + '.wav',
         ),
@@ -902,7 +899,7 @@ async function processAudio(
   })();
 
   const jacketAssetPath = path.join(
-    argvUtils.getArgv().outputDir,
+    argvUtils.getArgv()['outputDir'],
     configUser.getConfig().file.outputSubPath.assets,
     configUser.getConfig().file.assetUnityInternalPathDir,
     `live/jacket/jacket_icon_l_${liveId}.png`,
@@ -919,7 +916,7 @@ async function processAudio(
     //   `jacket_compressed.jpg`,
     // );
     const metaFlacInputTextPath = path.join(
-      argvUtils.getArgv().outputDir,
+      argvUtils.getArgv()['outputDir'],
       configUser.getConfig().file.outputSubPath.renderedAudio,
       'tmp',
       `metaflac_input.txt`,
@@ -938,7 +935,7 @@ async function processAudio(
     const metaflacInputTextObj: [string, string][] = [
       [
         'TITLE',
-        db.masterDb.text_data.find(
+        db.masterDb['text_data'].find(
           (texEntry: any) => texEntry.id === 16 && texEntry.category === 16 && texEntry.index === liveId,
         ).text as string,
       ],
@@ -947,12 +944,12 @@ async function processAudio(
         singleCharaModeCharaId === null
           ? 'Various Artists'
           : `${
-              db.masterDb.text_data.find(
+              db.masterDb['text_data'].find(
                 (texEntry: any) =>
                   texEntry.id === 6 && texEntry.category === 6 && texEntry.index === singleCharaModeCharaId,
               ).text
             } (CV: ${
-              db.masterDb.text_data.find(
+              db.masterDb['text_data'].find(
                 (texEntry: any) =>
                   texEntry.id === 7 && texEntry.category === 7 && texEntry.index === singleCharaModeCharaId,
               ).text
@@ -964,12 +961,12 @@ async function processAudio(
             [
               'ARTIST',
               `${
-                db.masterDb.text_data.find(
+                db.masterDb['text_data'].find(
                   (texEntry: any) =>
                     texEntry.id === 6 && texEntry.category === 6 && texEntry.index === singleCharaModeCharaId,
                 ).text
               } (CV: ${
-                db.masterDb.text_data.find(
+                db.masterDb['text_data'].find(
                   (texEntry: any) =>
                     texEntry.id === 7 && texEntry.category === 7 && texEntry.index === singleCharaModeCharaId,
                 ).text
@@ -985,11 +982,11 @@ async function processAudio(
                 [
                   'ARTIST',
                   `${
-                    db.masterDb.text_data.find(
+                    db.masterDb['text_data'].find(
                       (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
                     ).text
                   } (CV: ${
-                    db.masterDb.text_data.find(
+                    db.masterDb['text_data'].find(
                       (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
                     ).text
                   })` as string,
@@ -1016,14 +1013,14 @@ async function processAudio(
       //   ),
       ...(() => {
         const latestUnix = mathUtils.arrayMax([
-          db.masterDb.live_data.find((entry: any) => entry.music_id === liveId).start_date as number,
+          db.masterDb['live_data'].find((entry: any) => entry.music_id === liveId).start_date as number,
           ...Object.values(selectedSingChara)
             .filter((entry) => entry !== null)
             .filter(
               (charaId) =>
-                db.masterDb.chara_data.find((el: any) => el.id === charaId).start_date <= DateTime.now().toSeconds(),
+                db.masterDb['chara_data'].find((el: any) => el.id === charaId).start_date <= DateTime.now().toSeconds(),
             )
-            .map((charaId) => db.masterDb.chara_data.find((el: any) => el.id === charaId).start_date as number),
+            .map((charaId) => db.masterDb['chara_data'].find((el: any) => el.id === charaId).start_date as number),
         ]);
         const latestDateTime = DateTime.fromSeconds(latestUnix);
         return [
@@ -1070,7 +1067,7 @@ async function processAudio(
         '--import-picture-from',
         jacketAssetPath,
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'mix_norm_' + baseFilename + '.flac',
         ),
@@ -1086,7 +1083,7 @@ async function processAudio(
         '--remove-tag',
         'REPLAYGAIN_ALBUM_PEAK',
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'mix_norm_' + baseFilename + '.flac',
         ),
@@ -1120,23 +1117,23 @@ async function processAudio(
               .map(
                 (entry) =>
                   `${
-                    db.masterDb.text_data.find(
+                    db.masterDb['text_data'].find(
                       (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
                     ).text
                   } (CV: ${
-                    db.masterDb.text_data.find(
+                    db.masterDb['text_data'].find(
                       (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
                     ).text
                   })`,
               )
               .join(', ')
           : `${
-              db.masterDb.text_data.find(
+              db.masterDb['text_data'].find(
                 (texEntry: any) =>
                   texEntry.id === 6 && texEntry.category === 6 && texEntry.index === singleCharaModeCharaId,
               ).text
             } (CV: ${
-              db.masterDb.text_data.find(
+              db.masterDb['text_data'].find(
                 (texEntry: any) =>
                   texEntry.id === 7 && texEntry.category === 7 && texEntry.index === singleCharaModeCharaId,
               ).text
@@ -1151,12 +1148,12 @@ async function processAudio(
         '--copy-artwork',
         '-o',
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'mix_norm_' + baseFilename + '.m4a',
         ),
         path.join(
-          argvUtils.getArgv().outputDir,
+          argvUtils.getArgv()['outputDir'],
           configUser.getConfig().file.outputSubPath.renderedAudio,
           'mix_norm_' + baseFilename + '.flac',
         ),
@@ -1208,7 +1205,7 @@ async function processAudio(
   // })();
 
   await fs.rm(
-    path.join(argvUtils.getArgv().outputDir, configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
+    path.join(argvUtils.getArgv()['outputDir'], configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
     { recursive: true, force: true },
   );
   logger.info(chalk.gray('[Live Audio] ') + 'Everything is OK');

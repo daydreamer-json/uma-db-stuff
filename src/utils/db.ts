@@ -1,15 +1,15 @@
-import path from 'node:path';
 import * as sqlite from 'bun:sqlite';
-import cliProgress from 'cli-progress';
+import path from 'node:path';
 import chalk from 'chalk';
-import logger from './logger';
-import appConfig from './config';
-import configUser from './configUser';
-import argvUtils from './argv';
-import assetsUtils from './assets';
-import mathUtils from './math';
+import cliProgress from 'cli-progress';
 import * as TypesAssetEntry from '../types/AssetEntry';
 import * as TypesGeneric from '../types/Generic';
+import argvUtils from './argv';
+import assetsUtils from './assets';
+import appConfig from './config';
+import configUser from './configUser';
+import logger from './logger';
+import mathUtils from './math';
 
 let db: {
   assetDb: (TypesAssetEntry.AssetDbConvertedEntry & { isFileExists: boolean })[];
@@ -30,7 +30,7 @@ async function loadAllDb(onlyMasterDb: boolean) {
     if (onlyMasterDb === true && db !== null) return db.assetDb;
     else {
       const orig = await loadDb(configUser.getConfig().file.sqliteDbPath.assetDb!);
-      const pretty = convertAssetDbPretty(orig.a);
+      const pretty = convertAssetDbPretty(orig['a']);
       const existsChecked = await assetsUtils.assetsFileExistsCheck(pretty);
       return existsChecked;
     }
@@ -73,7 +73,7 @@ async function loadDb(filePath: string) {
       }> = [];
       await (async () => {
         const progressBar =
-          argvUtils.getArgv().noShowProgress === false
+          argvUtils.getArgv()['noShowProgress'] === false
             ? new cliProgress.SingleBar({
                 format: '{bar} {percentageFmt}% | {valueFmt} / {totalFmt} | {tableName}',
                 ...appConfig.logger.progressBarConfig,
@@ -94,7 +94,7 @@ async function loadDb(filePath: string) {
         for (const [i, tableName] of tablesName.entries()) {
           const data = await getTableData(tableName);
           tableDataArray.push({ tableName, data });
-          argvUtils.getArgv().noShowProgress
+          argvUtils.getArgv()['noShowProgress']
             ? logger.trace(`Loaded table from '${path.basename(filePath)}': '${tableName}'`)
             : null;
           loadedCount++;

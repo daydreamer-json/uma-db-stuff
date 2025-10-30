@@ -1,6 +1,5 @@
-import bun from 'bun';
 import path from 'node:path';
-import appConfig from '../utils/config';
+import bun from 'bun';
 import configUser from '../utils/configUser';
 import httpServerUtils from '../utils/httpServer';
 

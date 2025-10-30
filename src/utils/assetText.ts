@@ -1,7 +1,7 @@
 import path from 'node:path';
 import bun from 'bun';
+import { Duration } from 'luxon';
 import Papa from 'papaparse';
-import { Duration, DateTime } from 'luxon';
 import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
 
 async function parseCsvFile(filePath: string) {

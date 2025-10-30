@@ -1,9 +1,9 @@
 import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
 import { serveStatic } from '@hono/node-server/serve-static';
+import { Hono } from 'hono';
 import open from 'open';
-import logger from './logger';
 import exitUtils from './exit';
+import logger from './logger';
 
 async function main() {
   const app = new Hono();
@@ -23,7 +23,7 @@ async function main() {
   );
   const startServer = () =>
     new Promise<ReturnType<typeof serve>>((resolve) => {
-      const server = serve({ fetch: app.fetch, port }, (info) => resolve(server));
+      const server = serve({ fetch: app.fetch, port }, (_info) => resolve(server));
     });
   try {
     const server = await startServer();

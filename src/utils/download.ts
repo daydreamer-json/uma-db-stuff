@@ -1,18 +1,20 @@
-import fs from 'node:fs';
-import bun from 'bun';
-import path from 'node:path';
 import EventEmitter from 'node:events';
+import fs from 'node:fs';
+import path from 'node:path';
+import bun from 'bun';
 import cliProgress from 'cli-progress';
 import ky from 'ky';
+
 // import * as lz4 from 'lz4-napi';
 const lz4 = require('lz4-napi');
-import logger from './logger';
+
+import * as TypesAssetEntry from '../types/AssetEntry';
 import argvUtils from './argv';
 import appConfig from './config';
 import configUser from './configUser';
-import mathUtils from './math';
-import * as TypesAssetEntry from '../types/AssetEntry';
 import dbUtils from './db';
+import logger from './logger';
+import mathUtils from './math';
 
 async function downloadMissingAssets(
   forceOverwrite: boolean,
@@ -27,7 +29,7 @@ async function downloadMissingAssets(
       // );
       logger.info('Downloading asset files ...');
       const progressBar =
-        argvUtils.getArgv().noShowProgress === false
+        argvUtils.getArgv()['noShowProgress'] === false
           ? new cliProgress.MultiBar({
               format: 'Downloading {bar} {percentage}% | {value}/{total} files | {duration_formatted}/{eta_formatted}',
               ...appConfig.logger.progressBarConfig,
@@ -44,14 +46,14 @@ async function downloadMissingAssets(
       const downloadedFileEntry: Array<TypesAssetEntry.AssetDbConvertedEntry & { isFileExists: boolean }> = new Array();
       const downloadEmitter = new EventEmitter();
       const waitForAvailableThread = async () => {
-        if (activeDownloadsCount < argvUtils.getArgv().threadNetwork) return;
+        if (activeDownloadsCount < argvUtils.getArgv()['threadNetwork']) return;
         await new Promise((resolve) => downloadEmitter.once('threadAvailable', resolve));
       };
       for (let i = 0; i < needDownloadAssetEntries.length; i++) {
         const entryObj = needDownloadAssetEntries[i]!;
         await waitForAvailableThread();
         activeDownloadsCount++;
-        const connectionTimeStart = process.hrtime();
+        // const connectionTimeStart = process.hrtime();
         (async () => {
           const dlUrl = (() => {
             const endpoint = (() => {
@@ -155,7 +157,7 @@ async function downloadMissingAssets(
         })().then(async () => {
           downloadedFileEntry.push(entryObj);
           activeDownloadsCount--;
-          if (activeDownloadsCount < argvUtils.getArgv().threadNetwork) {
+          if (activeDownloadsCount < argvUtils.getArgv()['threadNetwork']) {
             downloadEmitter.emit('threadAvailable');
           }
           if (downloadedFileEntry.length === needDownloadAssetEntries.length) {
@@ -187,7 +189,7 @@ async function forceDownloadMasterDb(): Promise<void> {
     ].join('/');
     // console.log(assetEntry);
     const progressBar =
-      argvUtils.getArgv().noShowProgress === false
+      argvUtils.getArgv()['noShowProgress'] === false
         ? new cliProgress.SingleBar({
             format: '{bar} {percentageFormatted}% | {valueFormatted} / {totalFormatted}',
             ...appConfig.logger.progressBarConfig,

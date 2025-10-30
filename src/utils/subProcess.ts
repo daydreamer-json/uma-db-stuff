@@ -1,5 +1,5 @@
+import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
 import path from 'node:path';
-import { exec as execCallback, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 
 function spawnAsync(
   command: string,
@@ -25,9 +25,9 @@ function spawnAsync(
       stderr += data.toString();
     });
     child.on('close', (exitCode) => {
-      const lines = isStdPrint
-        ? stdout.replaceAll('\r\n', '\n').split('\n').length + stderr.replaceAll('\r\n', '\n').split('\n').length
-        : 0;
+      // const lines = isStdPrint
+      //   ? stdout.replaceAll('\r\n', '\n').split('\n').length + stderr.replaceAll('\r\n', '\n').split('\n').length
+      //   : 0;
       // for (let i = 0; i < lines; i++) {
       //   process.stdout.write('\x1B[1A');
       //   process.stdout.write('\x1B[2K');

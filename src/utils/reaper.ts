@@ -1,11 +1,13 @@
-import bun from 'bun';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import zstd from '@mongodb-js/zstd';
+import bun from 'bun';
 import chalk from 'chalk';
-import logger from './logger';
+import ora from 'ora';
 import appConfig from './config';
+import logger from './logger';
+// import spinnerConfig from './spinnerConfig';
 import subProcessUtils from './subProcess';
 
 async function reaperCleaning() {
@@ -49,7 +51,11 @@ async function reaperCleaning() {
 async function tr5StealthLimiter_preparePre() {
   // this vst throws an error when it cant find some files
   // but itll shut the fuck up it if we just make a dummy 0-byte file lol
-  logger.debug('Preparing VST plugin files ...');
+  const uiSpinner = ora({
+    text: 'Preparing VST plugin files ...',
+    color: 'cyan',
+    spinner: 'dots12',
+  }).start();
   const targetFiles: string[] = [
     'C:/Program Files/IK Multimedia/T-RackS 5/T-RackS 5.exe',
     'C:/Program Files/IK Multimedia/T-RackS 5/T-RackS 5.pak',
@@ -77,6 +83,7 @@ async function tr5StealthLimiter_preparePre() {
     }
     await bun.write(targetFile, ''); // write dummy empty file
   }
+  uiSpinner.stop();
   return {
     targetFiles,
     isTargetFilesExists,
@@ -89,7 +96,12 @@ async function tr5StealthLimiter_preparePost(preRetObj: {
   isTargetFilesExists: boolean[];
   movedFiles: string[];
 }) {
-  logger.debug('Cleaning VST plugin files ...');
+  // logger.debug('Cleaning VST plugin files ...');
+  const uiSpinner = ora({
+    text: 'Cleaning VST plugin files ...',
+    color: 'cyan',
+    spinner: 'dots12',
+  }).start();
   for (let i = 0; i < preRetObj.targetFiles.length; i++) {
     const targetFile: string = preRetObj.targetFiles[i]!;
     const isTargetFileExists: boolean = preRetObj.isTargetFilesExists[i]!;
@@ -100,6 +112,7 @@ async function tr5StealthLimiter_preparePost(preRetObj: {
       await subProcessUtils.spawnAsync('move', [`"${movedFile}"`, `"${targetFile}"`], { shell: true }, false);
     }
   }
+  uiSpinner.stop();
 }
 
 async function tr5StealthLimiter_buildFxChain(
@@ -200,13 +213,19 @@ async function tr5StealthLimiter_runPlugin(
   );
   await subProcessUtils.spawnAsync('move', ['/y', `"${inputPath}"`, `"${inputTmpPath}"`], { shell: true }, false);
   await bun.write(tmpConfigTmpPath, await tr5StealthLimiter_buildFxChain(inputTmpPath, outputTmpPath, gain));
-  console.log(chalk.bold.yellow.bgRgb(255, 0, 0)('=== Processing on VST... Do not touch the new window. ==='));
+  const uiSpinner = ora({
+    text: chalk.bold.red.bgRgb(255, 255, 255)('Processing on VST ... Do not touch the new window.'),
+    color: 'cyan',
+    spinner: 'material',
+  }).start();
+  // console.log(chalk.bold.yellow.bgRgb(255, 0, 0)('=== Processing on VST... Do not touch the new window. ==='));
   await subProcessUtils.spawnAsync(
     path.resolve(appConfig.file.cliPath.reaper),
     ['-batchconvert', tmpConfigTmpPath, '-nosplash', '-noactivate'],
     {},
   );
-  process.stdout.write('\x1b[1A\x1b[2K');
+  uiSpinner.stop();
+  // process.stdout.write('\x1b[1A\x1b[2K');
   await subProcessUtils.spawnAsync('move', ['/y', `"${inputTmpPath}"`, `"${inputPath}"`], { shell: true }, false);
   await subProcessUtils.spawnAsync('move', ['/y', `"${outputTmpPath}"`, `"${outputPath}"`], { shell: true }, false);
   await bun.file(tmpConfigTmpPath).delete();

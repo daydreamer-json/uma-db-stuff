@@ -1,20 +1,17 @@
-import path from 'node:path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import semver from 'semver';
-import testMainCmdHandler from './test';
-import argvUtils from './utils/argv';
+import cmds from './cmds';
 import * as TypesLogLevels from './types/LogLevels';
-import logger from './utils/logger';
+import argvUtils from './utils/argv';
 import appConfig from './utils/config';
-import configUser from './utils/configUser';
 import configEmbed from './utils/configEmbed';
-import processUtils from './utils/process';
-import fileUtils from './utils/file';
+import configUser from './utils/configUser';
 import dbUtils from './utils/db';
 import downloadUtils from './utils/download';
 import exitUtils from './utils/exit';
-import cmds from './cmds';
+import fileUtils from './utils/file';
+import logger from './utils/logger';
+import processUtils from './utils/process';
 
 if (configEmbed.VERSION_NUMBER === null) throw new Error('Embed VERSION_NUMBER is null');
 
@@ -255,7 +252,7 @@ async function parseCommand() {
     })
     .middleware(async (argv) => {
       argvUtils.setArgv(argv);
-      logger.level = argvUtils.getArgv().logLevel;
+      logger.level = argvUtils.getArgv()['logLevel'];
       logger.trace('Process started');
       await processUtils.checkRequirements();
       await processUtils.checkIsAdmin();
