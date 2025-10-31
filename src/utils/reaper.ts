@@ -5,10 +5,10 @@ import zstd from '@mongodb-js/zstd';
 import bun from 'bun';
 import chalk from 'chalk';
 import ora from 'ora';
-import appConfig from './config';
-import logger from './logger';
-// import spinnerConfig from './spinnerConfig';
-import subProcessUtils from './subProcess';
+import appConfig from './config.js';
+import logger from './logger.js';
+// import spinnerConfig from './spinnerConfig.js';
+import subProcessUtils from './subProcess.js';
 
 async function reaperCleaning() {
   await (async () => {

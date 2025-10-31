@@ -8,13 +8,13 @@ import ky from 'ky';
 // import * as lz4 from 'lz4-napi';
 const lz4 = require('lz4-napi');
 
-import * as TypesAssetEntry from '../types/AssetEntry';
-import argvUtils from './argv';
-import appConfig from './config';
-import configUser from './configUser';
-import dbUtils from './db';
-import logger from './logger';
-import mathUtils from './math';
+import * as TypesAssetEntry from '../types/AssetEntry.js';
+import argvUtils from './argv.js';
+import appConfig from './config.js';
+import configUser from './configUser.js';
+import dbUtils from './db.js';
+import logger from './logger.js';
+import mathUtils from './math.js';
 
 async function downloadMissingAssets(
   forceOverwrite: boolean,

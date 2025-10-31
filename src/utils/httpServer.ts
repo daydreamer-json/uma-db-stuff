@@ -4,8 +4,8 @@ import bun from 'bun';
 import { Hono } from 'hono';
 // import { getMimeType } from 'hono/utils/mime';
 import open from 'open';
-import exitUtils from './exit';
-import logger from './logger';
+import exitUtils from './exit.js';
+import logger from './logger.js';
 
 async function main() {
   const app = new Hono();

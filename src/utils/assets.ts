@@ -4,17 +4,17 @@ import path from 'node:path';
 import bun from 'bun';
 import chalk from 'chalk';
 import cliProgress from 'cli-progress';
-import * as TypesAssetEntry from '../types/AssetEntry';
-import argvUtils from './argv';
-import assetTextUtils from './assetText';
-import appConfig from './config';
-import configUser from './configUser';
-import dbUtils from './db';
-import fileUtils from './file';
-import logger from './logger';
-import mathUtils from './math';
-import subProcessUtils from './subProcess';
-import vgmUtils from './vgm';
+import * as TypesAssetEntry from '../types/AssetEntry.js';
+import argvUtils from './argv.js';
+import assetTextUtils from './assetText.js';
+import appConfig from './config.js';
+import configUser from './configUser.js';
+import dbUtils from './db.js';
+import fileUtils from './file.js';
+import logger from './logger.js';
+import mathUtils from './math.js';
+import subProcessUtils from './subProcess.js';
+import vgmUtils from './vgm.js';
 
 async function extractUnityAssetBundles(
   assetEntries: (TypesAssetEntry.AssetDbConvertedEntry & { isFileExists: boolean })[],

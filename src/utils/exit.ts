@@ -1,5 +1,5 @@
 import readline from 'node:readline';
-import appConfig from './config';
+import appConfig from './config.js';
 
 async function pressAnyKeyToExit(errorCode: number): Promise<void> {
   if (errorCode !== 0) console.error('An error occurred');

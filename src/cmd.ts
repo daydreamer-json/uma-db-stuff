@@ -1,17 +1,17 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import cmds from './cmds';
-import * as TypesLogLevels from './types/LogLevels';
-import argvUtils from './utils/argv';
-import appConfig from './utils/config';
-import configEmbed from './utils/configEmbed';
-import configUser from './utils/configUser';
-import dbUtils from './utils/db';
-import downloadUtils from './utils/download';
-import exitUtils from './utils/exit';
-import fileUtils from './utils/file';
-import logger from './utils/logger';
-import processUtils from './utils/process';
+import cmds from './cmds.js';
+import * as TypesLogLevels from './types/LogLevels.js';
+import argvUtils from './utils/argv.js';
+import appConfig from './utils/config.js';
+import configEmbed from './utils/configEmbed.js';
+import configUser from './utils/configUser.js';
+import dbUtils from './utils/db.js';
+import downloadUtils from './utils/download.js';
+import exitUtils from './utils/exit.js';
+import fileUtils from './utils/file.js';
+import logger from './utils/logger.js';
+import processUtils from './utils/process.js';
 
 if (configEmbed.VERSION_NUMBER === null) throw new Error('Embed VERSION_NUMBER is null');
 

@@ -6,17 +6,17 @@ import cliProgress from 'cli-progress';
 import { DateTime } from 'luxon';
 import prompts from 'prompts';
 import YAML from 'yaml';
-import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
-import argvUtils from '../utils/argv';
-import assetsUtils from '../utils/assets';
-import appConfig from '../utils/config';
-import configUser from '../utils/configUser';
-import dbUtils from '../utils/db';
-import downloadUtils from '../utils/download';
-import htmlBuildUtils from '../utils/htmlBuild';
-import httpServerUtils from '../utils/httpServer';
-import logger from '../utils/logger';
-import mathUtils from '../utils/math';
+import * as TypesAssetCsvStructure from '../types/AssetCsvStructure.js';
+import argvUtils from '../utils/argv.js';
+import assetsUtils from '../utils/assets.js';
+import appConfig from '../utils/config.js';
+import configUser from '../utils/configUser.js';
+import dbUtils from '../utils/db.js';
+import downloadUtils from '../utils/download.js';
+import htmlBuildUtils from '../utils/htmlBuild.js';
+import httpServerUtils from '../utils/httpServer.js';
+import logger from '../utils/logger.js';
+import mathUtils from '../utils/math.js';
 
 async function mainCmdHandler() {
   const db = await dbUtils.getDb();

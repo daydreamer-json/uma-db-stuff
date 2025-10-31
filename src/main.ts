@@ -4,8 +4,8 @@
 // clear();
 import childProcess from 'node:child_process';
 import util from 'node:util';
-import parseCommand from './cmd';
-import exitUtils from './utils/exit';
+import parseCommand from './cmd.js';
+import exitUtils from './utils/exit.js';
 
 const execPromise = util.promisify(childProcess.exec);
 

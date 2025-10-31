@@ -2,9 +2,9 @@ import bun from 'bun';
 import chalk from 'chalk';
 import open from 'open';
 import prompts from 'prompts';
-import exitUtils from './exit';
-import logger from './logger';
-import subProcessUtils from './subProcess';
+import exitUtils from './exit.js';
+import logger from './logger.js';
+import subProcessUtils from './subProcess.js';
 
 async function checkRequirements() {
   logger.debug('Checking system requirements ...');

@@ -1,4 +1,4 @@
-import audioGenerateUtils from '../utils/audioGenerate';
+import audioGenerateUtils from '../utils/audioGenerate.js';
 
 async function mainCmdHandler() {
   await audioGenerateUtils.generateMain();

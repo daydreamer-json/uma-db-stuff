@@ -1,14 +1,14 @@
 import path from 'node:path';
-import argvUtils from './utils/argv';
-// import assetsUtils from './utils/assets';
-import configUser from './utils/configUser';
-// import dbUtils from './utils/db';
-// import downloadUtils from './utils/download';
-// import exitUtils from './utils/exit';
-// import fileUtils from './utils/file';
-import logger from './utils/logger';
-// import processUtils from './utils/process';
-import reaperUtils from './utils/reaper';
+import argvUtils from './utils/argv.js';
+// import assetsUtils from './utils/assets.js';
+import configUser from './utils/configUser.js';
+// import dbUtils from './utils/db.js';
+// import downloadUtils from './utils/download.js';
+// import exitUtils from './utils/exit.js';
+// import fileUtils from './utils/file.js';
+import logger from './utils/logger.js';
+// import processUtils from './utils/process.js';
+import reaperUtils from './utils/reaper.js';
 
 async function mainCmdHandler() {
   await reaperUtils.reaperCleaning();

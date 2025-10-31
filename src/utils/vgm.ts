@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import bun from 'bun';
-import appConfig from './config';
-// import configUser from './configUser';
-import subProcessUtils from './subProcess';
+import appConfig from './config.js';
+// import configUser from './configUser.js';
+import subProcessUtils from './subProcess.js';
 
 async function generateCmdSingleFileAudio(filePath: string) {
   const retCmdLineObj: { command: string; args: string[] }[] = [];

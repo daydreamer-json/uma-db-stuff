@@ -2,7 +2,7 @@ import path from 'node:path';
 import bun from 'bun';
 import { Duration } from 'luxon';
 import Papa from 'papaparse';
-import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
+import * as TypesAssetCsvStructure from '../types/AssetCsvStructure.js';
 
 async function parseCsvFile(filePath: string) {
   const inputContext = (await bun.file(path.resolve(filePath)).text()).replaceAll('\r\n', '\n').trim();

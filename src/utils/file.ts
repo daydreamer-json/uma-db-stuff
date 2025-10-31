@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import bun from 'bun';
 import prompts from 'prompts';
-import configUser from './configUser';
-import logger from './logger';
+import configUser from './configUser.js';
+import logger from './logger.js';
 
 async function resolveGameDir() {
   if (

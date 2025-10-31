@@ -1,7 +1,7 @@
 import path from 'node:path';
 import bun from 'bun';
-import configUser from '../utils/configUser';
-import httpServerUtils from '../utils/httpServer';
+import configUser from '../utils/configUser.js';
+import httpServerUtils from '../utils/httpServer.js';
 
 async function mainCmdHandler() {
   if (

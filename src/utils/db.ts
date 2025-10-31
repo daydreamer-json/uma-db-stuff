@@ -2,14 +2,14 @@ import * as sqlite from 'bun:sqlite';
 import path from 'node:path';
 import chalk from 'chalk';
 import cliProgress from 'cli-progress';
-import * as TypesAssetEntry from '../types/AssetEntry';
-import * as TypesGeneric from '../types/Generic';
-import argvUtils from './argv';
-import assetsUtils from './assets';
-import appConfig from './config';
-import configUser from './configUser';
-import logger from './logger';
-import mathUtils from './math';
+import * as TypesAssetEntry from '../types/AssetEntry.js';
+import * as TypesGeneric from '../types/Generic.js';
+import argvUtils from './argv.js';
+import assetsUtils from './assets.js';
+import appConfig from './config.js';
+import configUser from './configUser.js';
+import logger from './logger.js';
+import mathUtils from './math.js';
 
 let db: {
   assetDb: (TypesAssetEntry.AssetDbConvertedEntry & { isFileExists: boolean })[];

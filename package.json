@@ -1,23 +1,23 @@
 {
   "name": "uma-db-stuff",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A set of experimental scripts to process Umamusume Pretty Derby game assets and database files",
   "author": "daydreamer-json <atarakima1@icloud.com> (https://github.com/daydreamer-json)",
   "license": "AGPL-3.0-or-later",
   "type": "module",
-  "module": "src/main.ts",
+  "module": "dist/main.js",
   "private": true,
   "scripts": {
-    "format": "bun x biome format --write src",
-    "start": "bun src/main.ts",
-    "build": "bun prebuild.ts && bun build --compile --minify --target=bun-windows-x64-baseline src/main.ts --outfile=uma-db-stuff.exe"
+    "format": "npx biome format --write src",
+    "start": "npx biome format --write src && tsc && node dist/main.js",
+    "build": "npx biome format --write src && tsc && node dist/prebuild.js && bun build --compile --minify --target=bun-windows-x64-baseline src/main.ts --outfile=uma-db-stuff.exe"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.2",
-    "@tsconfig/bun": "^1.0.9",
-    "@tsconfig/strictest": "^2.0.6",
+    "@tsconfig/node24": "^24.0.1",
+    "@tsconfig/recommended": "^1.0.11",
+    "@tsconfig/strictest": "^2.0.7",
     "@types/async-retry": "^1.4.9",
-    "@types/bun": "latest",
     "@types/cli-progress": "^3.11.6",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/ini": "^4.1.1",
@@ -29,10 +29,8 @@
     "@types/wcwidth": "^1.0.2",
     "@types/yargs": "^17.0.34",
     "nodemon": "^3.1.10",
-    "prettier": "^3.6.2"
-  },
-  "peerDependencies": {
-    "typescript": "^5.8.2"
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.5",
@@ -66,12 +64,5 @@
     "wcwidth": "^1.0.1",
     "yaml": "^2.8.1",
     "yargs": "^17.7.2"
-  },
-  "trustedDependencies": [
-    "@biomejs/biome",
-    "@mongodb-js/zstd",
-    "better-sqlite3-multiple-ciphers",
-    "es5-ext",
-    "sharp"
-  ]
+  }
 }

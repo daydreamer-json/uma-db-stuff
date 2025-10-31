@@ -2,8 +2,8 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import open from 'open';
-import exitUtils from './exit';
-import logger from './logger';
+import exitUtils from './exit.js';
+import logger from './logger.js';
 
 async function main() {
   const app = new Hono();

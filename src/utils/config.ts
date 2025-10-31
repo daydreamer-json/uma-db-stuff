@@ -1,6 +1,6 @@
 import bun from 'bun';
 import YAML from 'yaml';
-import * as TypesLogLevels from '../types/LogLevels';
+import * as TypesLogLevels from '../types/LogLevels.js';
 
 type Freeze<T> = Readonly<{
   [P in keyof T]: T[P] extends object ? Freeze<T[P]> : T[P];
