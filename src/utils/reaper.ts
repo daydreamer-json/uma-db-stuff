@@ -7,6 +7,7 @@ import ora from 'ora';
 import appConfig from './config.js';
 import fileUtils from './file.js';
 import logger from './logger.js';
+import stringUtils from './string.js';
 // import spinnerConfig from './spinnerConfig.js';
 import subProcessUtils from './subProcess.js';
 
@@ -66,14 +67,7 @@ async function tr5StealthLimiter_preparePre() {
   for (const targetFile of targetFiles) {
     if (await fileUtils.checkFileExists(targetFile)) {
       isTargetFilesExists.push(true);
-      const moveFilePath: string = path.join(
-        path.dirname(targetFile),
-        'backup_' +
-          [...crypto.getRandomValues(new Uint8Array(16))]
-            .map((b) => b.toString(16).padStart(2, '0'))
-            .join('')
-            .slice(0, 16),
-      );
+      const moveFilePath: string = path.join(path.dirname(targetFile), 'backup_' + stringUtils.getRandomHexHashStr(8));
       movedFiles.push(moveFilePath);
       // logger.trace(`Renaming exist: '${path.basename(targetFile)}' -> '${path.basename(moveFilePath)}'`);
       await subProcessUtils.spawnAsync('move', [`"${targetFile}"`, `"${moveFilePath}"`], { shell: true }, false);

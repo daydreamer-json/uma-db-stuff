@@ -35,7 +35,9 @@ async function loadAllDb(onlyMasterDb: boolean) {
           hexToUint8Array(appConfig.cipher.sqliteDb.plainKey),
           hexToUint8Array(appConfig.cipher.sqliteDb.baseKey),
         ),
+        true,
       );
+      // console.log(orig['a'].map((e: any) => e.e));
       const pretty = convertAssetDbPretty(orig['a']);
       const existsChecked = await assetsUtils.assetsFileExistsCheck(pretty);
       return existsChecked;
@@ -57,14 +59,15 @@ async function loadAllDb(onlyMasterDb: boolean) {
   };
 }
 
-async function loadDb(filePath: string, decryptionKey: Uint8Array | null) {
+async function loadDb(filePath: string, decryptionKey: Uint8Array | null, defaultSafeIntegers: boolean = false) {
   logger.debug(`Connected to the SQLite database: '${path.basename(filePath)}'`);
   const sqliteDb = new betterSqliteDb(filePath);
+  sqliteDb.defaultSafeIntegers(defaultSafeIntegers);
   if (decryptionKey !== null) {
     logger.trace('Decrypting database with:');
-    logger.trace('  Plain key: ' + appConfig.cipher.sqliteDb.plainKey);
-    logger.trace('  XOR key:   ' + appConfig.cipher.sqliteDb.baseKey);
-    logger.trace('  Final key: ' + Buffer.from(decryptionKey).toString('hex'));
+    logger.trace('    Plain key: ' + appConfig.cipher.sqliteDb.plainKey);
+    logger.trace('    XOR key:   ' + appConfig.cipher.sqliteDb.baseKey);
+    logger.trace('    Final key: ' + Buffer.from(decryptionKey).toString('hex'));
     sqliteDb.pragma(`hexkey = '${Buffer.from(decryptionKey).toString('hex')}'`);
   }
   const getTablesName = async (): Promise<string[]> => {
@@ -131,73 +134,6 @@ async function loadDb(filePath: string, decryptionKey: Uint8Array | null) {
   return allTablesData;
 }
 
-// async function loadDb_LEGACY(filePath: string) {
-//   const sqLiteDb = new sqlite.Database(filePath);
-//   logger.debug(`Connected to the SQLite database: '${path.basename(filePath)}'`);
-//   const getTablesName = async (): Promise<string[]> => {
-//     const stmt = sqLiteDb.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`);
-//     const rows = stmt.all() as { name: string }[];
-//     return rows.map((row) => row.name);
-//   };
-//   const getTableData = async (tableName: string): Promise<Array<{ [key: string]: any }>> => {
-//     const stmt = sqLiteDb.prepare(`SELECT * FROM \`${tableName}\``);
-//     const rows = stmt.all() as { [key: string]: any }[];
-//     return rows;
-//   };
-//   const allTablesData = await (async () => {
-//     try {
-//       const tablesName = await getTablesName();
-//       const tableDataArray: Array<{
-//         tableName: string;
-//         data: Array<{ [key: string]: any }>;
-//       }> = [];
-//       await (async () => {
-//         const progressBar =
-//           argvUtils.getArgv()['noShowProgress'] === false
-//             ? new cliProgress.SingleBar({
-//                 format: '{bar} {percentageFmt}% | {valueFmt} / {totalFmt} | {tableName}',
-//                 ...appConfig.logger.progressBarConfig,
-//               })
-//             : null;
-//         const progressBarFormatter = (currentValue: number, totalValue: number) => {
-//           return {
-//             percentageFmt: mathUtils.rounder('ceil', (currentValue / totalValue) * 100, 2).padded.padStart(6, ' '),
-//             valueFmt: String(currentValue).padStart(String(totalValue).length, ' '),
-//             totalFmt: String(totalValue).padStart(String(totalValue).length, ' '),
-//           };
-//         };
-//         let loadedCount = 0;
-//         progressBar?.start(tablesName.length, loadedCount, {
-//           tableName: tablesName[0],
-//           ...progressBarFormatter(loadedCount, tablesName.length),
-//         });
-//         for (const [i, tableName] of tablesName.entries()) {
-//           const data = await getTableData(tableName);
-//           tableDataArray.push({ tableName, data });
-//           argvUtils.getArgv()['noShowProgress']
-//             ? logger.trace(`Loaded table from '${path.basename(filePath)}': '${tableName}'`)
-//             : null;
-//           loadedCount++;
-//           progressBar?.update(loadedCount, {
-//             tableName: tablesName[i + 1] ?? tablesName[i],
-//             ...progressBarFormatter(loadedCount, tablesName.length),
-//           });
-//         }
-//         progressBar?.stop();
-//       })();
-
-//       return tableDataArray.reduce((acc: TypesGeneric.NestedObject, item) => {
-//         acc[item.tableName] = item.data;
-//         return acc;
-//       }, {});
-//     } catch (err: any) {
-//       logger.error('Error processing tables:', err.message);
-//       throw err;
-//     }
-//   })();
-//   return allTablesData;
-// }
-
 function convertAssetDbPretty(
   assetDb: Array<TypesAssetEntry.AssetDbOriginalEntry>,
 ): Array<TypesAssetEntry.AssetDbConvertedEntry> {
@@ -215,6 +151,7 @@ function convertAssetDbPretty(
     k: parseInt(entry.k),
     ondemand: entry.s === 0,
     p: parseInt(entry.p),
+    encryptionKey: BigInt(entry.e),
   }));
 }
 

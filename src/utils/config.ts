@@ -41,6 +41,10 @@ type ConfigType = AllRequired<
         baseKey: string; // hex
         plainKey: string; // hex
       };
+      // Key for decrypting Unity AssetBundle.
+      assetBundle: {
+        baseKey: string; // hex
+      };
     };
     network: {
       assetApi: {
@@ -114,6 +118,9 @@ const initialConfig: ConfigType = {
     sqliteDb: {
       baseKey: 'f170cea4dfcea3e1a5d8c70bd1',
       plainKey: '6d5b65336336632554712d73505363386d34377b356370233734532973433633',
+    },
+    assetBundle: {
+      baseKey: '532b4631e4a7b9473e7cfb',
     },
   },
   network: {
