@@ -9,7 +9,7 @@ import configUser from './utils/configUser.js';
 import dbUtils from './utils/db.js';
 import downloadUtils from './utils/download.js';
 import exitUtils from './utils/exit.js';
-import fileUtils from './utils/file.js';
+import gameDirResolver from './utils/gameDirResolver.js';
 import logger from './utils/logger.js';
 import processUtils from './utils/process.js';
 
@@ -257,7 +257,7 @@ async function parseCommand() {
       await processUtils.checkRequirements();
       await processUtils.checkIsAdmin();
       await processUtils.checkIsGameRunning();
-      await fileUtils.resolveGameDir();
+      await gameDirResolver.resolveGameDir();
       await dbUtils.loadAllDb(false);
       await downloadUtils.forceDownloadMasterDb();
     })

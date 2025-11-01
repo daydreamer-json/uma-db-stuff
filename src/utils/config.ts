@@ -1,6 +1,7 @@
-import bun from 'bun';
+import fs from 'node:fs/promises';
 import YAML from 'yaml';
 import * as TypesLogLevels from '../types/LogLevels.js';
+import fileUtils from './file.js';
 
 type Freeze<T> = Readonly<{
   [P in keyof T]: T[P] extends object ? Freeze<T[P]> : T[P];
@@ -34,6 +35,11 @@ type ConfigType = AllRequired<
       cri: {
         hca: string; // hex
         usm: string; // hex
+      };
+      // Key for decrypting SQLite database.
+      sqliteDb: {
+        baseKey: string; // hex
+        plainKey: string; // hex
       };
     };
     network: {
@@ -105,6 +111,10 @@ const initialConfig: ConfigType = {
       hca: '0000450d608c479f',
       usm: '0000450d608c479f',
     },
+    sqliteDb: {
+      baseKey: 'f170cea4dfcea3e1a5d8c70bd1',
+      plainKey: '6d5b65336336632554712d73505363386d34377b356370233734532973433633',
+    },
   },
   network: {
     assetApi: {
@@ -150,10 +160,10 @@ const initialConfig: ConfigType = {
 
 const filePath = 'config/config.yaml';
 
-if ((await bun.file(filePath).exists()) === false) {
-  await bun.write(filePath, YAML.stringify(initialConfig, null, 2));
+if ((await fileUtils.checkFileExists(filePath)) === false) {
+  await fs.writeFile(filePath, YAML.stringify(initialConfig, null, 2), 'utf-8');
 }
 
-const config: ConfigType = YAML.parse(await bun.file(filePath).text());
+const config: ConfigType = YAML.parse(await fs.readFile(filePath, 'utf-8'));
 
 export default config;

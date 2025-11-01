@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import bun from 'bun';
 import chalk from 'chalk';
 import ffmpeg from 'fluent-ffmpeg';
 import { DateTime } from 'luxon';
@@ -14,6 +13,7 @@ import configUser from './configUser.js';
 import dbUtils from './db.js';
 import downloadUtils from './download.js';
 import exitUtils from './exit.js';
+import fileUtils from './file.js';
 import logger from './logger.js';
 import mathUtils from './math.js';
 import reaperUtils from './reaper.js';
@@ -94,9 +94,9 @@ async function loadMusicScoreJson(liveId: number): Promise<{
   };
   if (
     !(
-      (await bun.file(filePaths.cyalume).exists()) &&
-      (await bun.file(filePaths.lyrics).exists()) &&
-      (await bun.file(filePaths.part).exists())
+      (await fileUtils.checkFileExists(filePaths.cyalume)) &&
+      (await fileUtils.checkFileExists(filePaths.lyrics)) &&
+      (await fileUtils.checkFileExists(filePaths.part))
     )
   ) {
     const regex = new RegExp(`^live/musicscores/m${liveId}.*$`, 'g');
@@ -110,9 +110,9 @@ async function loadMusicScoreJson(liveId: number): Promise<{
     await assetsUtils.extractUnityAssetBundles((await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)));
   }
   return {
-    cyalume: await bun.file(filePaths.cyalume).json(),
-    lyrics: await bun.file(filePaths.lyrics).json(),
-    part: await bun.file(filePaths.part).json(),
+    cyalume: JSON.parse(await fs.readFile(filePaths.cyalume, 'utf-8')),
+    lyrics: JSON.parse(await fs.readFile(filePaths.lyrics, 'utf-8')),
+    part: JSON.parse(await fs.readFile(filePaths.part, 'utf-8')),
   };
 }
 
@@ -333,7 +333,7 @@ async function processAudio(
     configUser.getConfig().file.assetUnityInternalPathDir,
     `sound/l/${liveId}/snd_bgm_live_${liveId}_oke_${isOkeCheers ? '01' : '02'}.awb.json`,
   );
-  if (!(await bun.file(okeMetadataJsonPath).exists())) {
+  if (!(await fileUtils.checkFileExists(okeMetadataJsonPath))) {
     const regex = new RegExp(`^sound/l/${liveId}/snd_bgm_live_${liveId}_(oke|preview).*$`, 'g');
     if ((await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex) && !el.isFileExists).length > 0) {
       await downloadUtils.downloadMissingAssets(
@@ -349,16 +349,15 @@ async function processAudio(
       const arr: number[] = [];
       for (const charaId of Object.values(selectedSingChara).filter((el) => el !== null)) {
         if (
-          !(await bun
-            .file(
-              path.join(
-                argvUtils.getArgv()['outputDir'],
-                configUser.getConfig().file.outputSubPath.assets,
-                configUser.getConfig().file.assetUnityInternalPathDir,
-                `sound/l/${liveId}/snd_bgm_live_${liveId}_chara_${charaId}_01.awb.json`,
-              ),
-            )
-            .exists())
+          !(await fs.readFile(
+            path.join(
+              argvUtils.getArgv()['outputDir'],
+              configUser.getConfig().file.outputSubPath.assets,
+              configUser.getConfig().file.assetUnityInternalPathDir,
+              `sound/l/${liveId}/snd_bgm_live_${liveId}_chara_${charaId}_01.awb.json`,
+            ),
+            'utf-8',
+          ))
         )
           arr.push(charaId);
       }
@@ -770,21 +769,17 @@ async function processAudio(
     logger.debug(
       chalk.gray('[Live Audio] ') + 'Calculated premaster loudness: ' + premasterLoudnessStats.input_i + ' dB',
     );
-    await bun.write(
-      bun.file(
-        path.join(
-          argvUtils.getArgv()['outputDir'],
-          configUser.getConfig().file.outputSubPath.renderedAudio,
-          'mix_orig_' + baseFilename + '.wav',
-        ),
+    await fileUtils.copyFileWithStream(
+      path.join(
+        argvUtils.getArgv()['outputDir'],
+        configUser.getConfig().file.outputSubPath.renderedAudio,
+        'tmp',
+        `l${liveId}_mix_raw.wav`,
       ),
-      bun.file(
-        path.join(
-          argvUtils.getArgv()['outputDir'],
-          configUser.getConfig().file.outputSubPath.renderedAudio,
-          'tmp',
-          `l${liveId}_mix_raw.wav`,
-        ),
+      path.join(
+        argvUtils.getArgv()['outputDir'],
+        configUser.getConfig().file.outputSubPath.renderedAudio,
+        'mix_orig_' + baseFilename + '.wav',
       ),
     );
     logger.debug(
@@ -921,7 +916,7 @@ async function processAudio(
       'tmp',
       `metaflac_input.txt`,
     );
-    if (!(await bun.file(jacketAssetPath).exists())) {
+    if (!(await fileUtils.checkFileExists(jacketAssetPath))) {
       const regex = new RegExp(`^live/jacket/jacket_icon_l.*$`, 'g');
       if (db.assetDb.filter((el) => el.name.match(regex) && !el.isFileExists).length > 0) {
         await downloadUtils.downloadMissingAssets(
@@ -1050,7 +1045,11 @@ async function processAudio(
       ['ENCODEDBY', `${configEmbed.APPLICATION_NAME} v${configEmbed.VERSION_NUMBER}`],
       ['ENCODERSETTINGS', `${JSON.stringify(configUser.getConfig().audio)}`],
     ];
-    await bun.write(metaFlacInputTextPath, metaflacInputTextObj.map((el) => `${el[0]}=${el[1]}`).join('\r\n') + '\r\n');
+    await fs.writeFile(
+      metaFlacInputTextPath,
+      metaflacInputTextObj.map((el) => `${el[0]}=${el[1]}`).join('\r\n') + '\r\n',
+      'utf-8',
+    );
     // await bun.write(
     //   jacketCompressedPath,
     //   await sharp(await bun.file(jacketAssetPath).bytes())

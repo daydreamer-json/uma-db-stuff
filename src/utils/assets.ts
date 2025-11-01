@@ -1,7 +1,6 @@
 import EventEmitter from 'node:events';
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
-import bun from 'bun';
 import chalk from 'chalk';
 import cliProgress from 'cli-progress';
 import * as TypesAssetEntry from '../types/AssetEntry.js';
@@ -68,7 +67,7 @@ async function extractUnityAssetBundles(
             for (const file of files.filter((el) =>
               new RegExp(`${path.parse(assetEntries[i]!.name).name}.*\$`).test(el),
             )) {
-              await bun.file(file).delete();
+              await fs.rm(file);
             }
           } catch (error) {}
         })();
@@ -162,7 +161,7 @@ async function extractCriAudioAssets(
         await waitForAvailableThread();
         activeProcessingCount++;
         (async () => {
-          await fs.promises.mkdir(
+          await fs.mkdir(
             path.dirname(
               path.join(
                 argvUtils.getArgv()['outputDir'],
@@ -276,7 +275,7 @@ async function extractCriAudioAssets(
     const afterAllProcessedFunc = async () => {
       progressBar?.stop();
       for (const entry of assetEntries) {
-        await fs.promises.rm(
+        await fs.rm(
           path.join(
             argvUtils.getArgv()['outputDir'],
             configUser.getConfig().file.outputSubPath.assets,
@@ -321,9 +320,7 @@ async function TEST_deleteRandomAssets(count: number) {
   const randomAssets = getRandomElements(db, count);
   logger.debug(chalk.red(`[TEST] Deleting ${count} exists files ...`));
   for (const assetEntry of randomAssets) {
-    await bun
-      .file(path.join(configUser.getConfig().file.gameAssetDirPath!, assetEntry.hash.slice(0, 2), assetEntry.hash))
-      .delete();
+    await fs.rm(path.join(configUser.getConfig().file.gameAssetDirPath!, assetEntry.hash.slice(0, 2), assetEntry.hash));
   }
   await dbUtils.loadAllDb(false);
 }

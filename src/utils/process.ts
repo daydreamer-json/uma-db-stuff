@@ -1,4 +1,4 @@
-import bun from 'bun';
+import child_process from 'node:child_process';
 import chalk from 'chalk';
 import open from 'open';
 import prompts from 'prompts';
@@ -76,8 +76,8 @@ async function checkRequirements() {
 }
 
 async function checkIsAdmin() {
-  const rsp = bun.spawnSync(['net', 'session']);
-  if (rsp.exitCode !== 0 || !rsp.success) {
+  const rsp = child_process.spawnSync('net', ['session']);
+  if (rsp.status !== 0) {
     logger.error('This program must be run as an administrator');
     await exitUtils.pressAnyKeyToExit(1);
   }
@@ -85,7 +85,7 @@ async function checkIsAdmin() {
 
 async function checkIsGameRunning() {
   const processesToKill = ['umamusume', 'DMMGamePlayer']; // for safety and security
-  const runningProcesses = bun.spawnSync(['tasklist']).stdout;
+  const runningProcesses = child_process.spawnSync('tasklist').stdout.toString().replaceAll('\r\n', '\n').trim();
   const detectedProcesses = processesToKill.filter((processName) => runningProcesses.includes(processName));
   if (detectedProcesses.length > 0) {
     detectedProcesses.forEach((processName) =>
@@ -104,9 +104,9 @@ async function checkIsGameRunning() {
     if (killProcesses) {
       logger.trace(`Killing process${detectedProcesses.length > 1 ? 'es' : ''} ...`);
       detectedProcesses.forEach((processName) => {
-        const result = bun.spawnSync(['taskkill', '/f', '/im', `${processName}.exe`]);
-        if (result.exitCode !== 0 || !result.success) {
-          logger.error(`Failed to kill process: ${processName}.exe, Code: ${result.exitCode}`);
+        const result = child_process.spawnSync('taskkill', ['/f', '/im', `${processName}.exe`]);
+        if (result.status !== 0) {
+          logger.error(`Failed to kill process: ${processName}.exe, Code: ${result.status}`);
         } else {
           logger.info(`Successfully killed process: ${processName}.exe`);
         }

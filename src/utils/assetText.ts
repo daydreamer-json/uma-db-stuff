@@ -1,11 +1,11 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
-import bun from 'bun';
 import { Duration } from 'luxon';
 import Papa from 'papaparse';
 import * as TypesAssetCsvStructure from '../types/AssetCsvStructure.js';
 
 async function parseCsvFile(filePath: string) {
-  const inputContext = (await bun.file(path.resolve(filePath)).text()).replaceAll('\r\n', '\n').trim();
+  const inputContext = (await fs.readFile(path.resolve(filePath), 'utf-8')).replaceAll('\r\n', '\n').trim();
   const parsedContext = Papa.parse(
     inputContext.replace(
       'time,lleft,left,center,right,rright,lleft_vol,left_vol,center_vol,right_vol,right_vol,lleft_pan,left_pan,center_pan,right_pan,rright_pan',
@@ -18,23 +18,30 @@ async function parseCsvFile(filePath: string) {
   ).data as Array<object>;
   if (path.parse(filePath).name.match(/_part/)) {
     const response = parseJsonMusicscorePart(parsedContext as Array<TypesAssetCsvStructure.MusicscorePartOrig>);
-    await bun.write(
+    await fs.writeFile(
       path.join(path.dirname(filePath), path.parse(filePath).name + '.json'),
       JSON.stringify(response, null, 2),
+      'utf-8',
     );
     return response;
   } else if (path.parse(filePath).name.match(/_lyrics/)) {
     const response = parseJsonMusicscoreLyrics(parsedContext as Array<TypesAssetCsvStructure.MusicscoreLyricsOrig>);
-    await bun.write(
+    await fs.writeFile(
       path.join(path.dirname(filePath), path.parse(filePath).name + '.json'),
       JSON.stringify(response, null, 2),
+      'utf-8',
     );
-    await bun.write(path.join(path.dirname(filePath), path.parse(filePath).name + '.lrc'), response.lrcEncoded);
+    await fs.writeFile(
+      path.join(path.dirname(filePath), path.parse(filePath).name + '.lrc'),
+      response.lrcEncoded,
+      'utf-8',
+    );
     return response;
   }
-  await bun.write(
+  await fs.writeFile(
     path.join(path.dirname(filePath), path.parse(filePath).name + '.json'),
     JSON.stringify(parsedContext, null, 2),
+    'utf-8',
   );
   return parsedContext;
 }

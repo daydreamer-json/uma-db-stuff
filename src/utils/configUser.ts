@@ -1,7 +1,8 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
-import bun from 'bun';
 import deepmerge from 'deepmerge';
 import YAML from 'yaml';
+import fileUtils from './file.js';
 
 type Freeze<T> = Readonly<{
   [P in keyof T]: T[P] extends object ? Freeze<T[P]> : T[P];
@@ -68,15 +69,15 @@ const initialConfig: ConfigType = {
 
 const filePath = 'config/config_user.yaml';
 
-if ((await bun.file(filePath).exists()) === false) {
-  await bun.write(filePath, YAML.stringify(initialConfig, null, 2));
+if ((await fileUtils.checkFileExists(filePath)) === false) {
+  await fs.writeFile(filePath, YAML.stringify(initialConfig, null, 2), 'utf-8');
 }
 
 let config: ConfigType = await (async () => {
-  const rawFileData: ConfigType = YAML.parse(await bun.file(filePath).text()) as ConfigType;
+  const rawFileData: ConfigType = YAML.parse(await fs.readFile(filePath, 'utf-8')) as ConfigType;
   const mergedConfig = deepmerge(initialConfig, rawFileData);
   if (JSON.stringify(rawFileData) !== JSON.stringify(mergedConfig)) {
-    await bun.write(filePath, YAML.stringify(mergedConfig, null, 2));
+    await fs.writeFile(filePath, YAML.stringify(mergedConfig, null, 2), 'utf-8');
   }
   return mergedConfig;
 })();
@@ -85,6 +86,6 @@ export default {
   getConfig: () => config,
   setConfig: async (newValue: ConfigType) => {
     config = newValue;
-    await bun.write(filePath, YAML.stringify(config, null, 2));
+    await fs.writeFile(filePath, YAML.stringify(config, null, 2), 'utf-8');
   },
 };

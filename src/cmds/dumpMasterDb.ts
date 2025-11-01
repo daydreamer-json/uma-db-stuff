@@ -1,7 +1,6 @@
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as zstd from '@mongodb-js/zstd';
-import bun from 'bun';
 import cliProgress from 'cli-progress';
 import { DateTime } from 'luxon';
 import prompts from 'prompts';
@@ -45,7 +44,7 @@ async function mainCmdHandler() {
   };
   await (async () => {
     for (const dirPath of Object.values(dirObj.master)) {
-      await fs.promises.mkdir(dirPath, { recursive: true });
+      await fs.mkdir(dirPath, { recursive: true });
     }
   })();
   const func = {
@@ -55,9 +54,9 @@ async function mainCmdHandler() {
         const { isFileExists, ...rest } = obj;
         return rest;
       });
-      await bun.write(path.join(dirObj.root, 'asset.min.json'), JSON.stringify(strippedAssetDb));
-      await bun.write(path.join(dirObj.root, 'asset.json'), JSON.stringify(strippedAssetDb, null, 2));
-      await bun.write(path.join(dirObj.root, 'asset.jsonl'), jsonlStringify(strippedAssetDb));
+      await fs.writeFile(path.join(dirObj.root, 'asset.min.json'), JSON.stringify(strippedAssetDb), 'utf-8');
+      await fs.writeFile(path.join(dirObj.root, 'asset.json'), JSON.stringify(strippedAssetDb, null, 2), 'utf-8');
+      await fs.writeFile(path.join(dirObj.root, 'asset.jsonl'), jsonlStringify(strippedAssetDb), 'utf-8');
     },
     exportMasterDb: async () => {
       //* Export masterDb
@@ -82,10 +81,18 @@ async function mainCmdHandler() {
         ...progressBarFormatter(loadedCount, tablesName.length),
       });
       for (const key of tablesName) {
-        await bun.write(path.join(dirObj.master.minJson, key + '.min.json'), JSON.stringify(db.masterDb[key]));
-        await bun.write(path.join(dirObj.master.json, key + '.json'), JSON.stringify(db.masterDb[key], null, 2));
-        await bun.write(path.join(dirObj.master.jsonl, key + '.jsonl'), jsonlStringify(db.masterDb[key]));
-        await bun.write(path.join(dirObj.master.yaml, key + '.yaml'), YAML.stringify(db.masterDb[key]));
+        await fs.writeFile(
+          path.join(dirObj.master.minJson, key + '.min.json'),
+          JSON.stringify(db.masterDb[key]),
+          'utf-8',
+        );
+        await fs.writeFile(
+          path.join(dirObj.master.json, key + '.json'),
+          JSON.stringify(db.masterDb[key], null, 2),
+          'utf-8',
+        );
+        await fs.writeFile(path.join(dirObj.master.jsonl, key + '.jsonl'), jsonlStringify(db.masterDb[key]), 'utf-8');
+        await fs.writeFile(path.join(dirObj.master.yaml, key + '.yaml'), YAML.stringify(db.masterDb[key]), 'utf-8');
         argvUtils.getArgv()['noShowProgress'] ? logger.trace(`Exported master database': '${key}'`) : null;
         loadedCount++;
         progressBar?.update(loadedCount, {
@@ -120,39 +127,42 @@ async function mainCmdHandler() {
         const liveId = livesFiltered[i].music_id;
         outArr.push({
           id: liveId,
-          cyalume: await bun
-            .file(
+          cyalume: JSON.parse(
+            await fs.readFile(
               path.join(
                 argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 `live/musicscores/m${liveId}/m${liveId}_cyalume.json`,
               ),
-            )
-            .json(),
-          lyrics: await bun
-            .file(
+              'utf-8',
+            ),
+          ),
+          lyrics: JSON.parse(
+            await fs.readFile(
               path.join(
                 argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 `live/musicscores/m${liveId}/m${liveId}_lyrics.json`,
               ),
-            )
-            .json(),
-          part: await bun
-            .file(
+              'utf-8',
+            ),
+          ),
+          part: JSON.parse(
+            await fs.readFile(
               path.join(
                 argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 `live/musicscores/m${liveId}/m${liveId}_part.json`,
               ),
-            )
-            .json(),
+              'utf-8',
+            ),
+          ),
         });
       }
-      await bun.write(path.join(dirObj.root, 'musicscores.json'), JSON.stringify(outArr, null, 2));
+      await fs.writeFile(path.join(dirObj.root, 'musicscores.json'), JSON.stringify(outArr, null, 2), 'utf-8');
     },
     exportHandbookV2: async () => {
       if (true) {
@@ -263,16 +273,17 @@ async function mainCmdHandler() {
           const retArr = [];
           for (const liveId of targetLiveIds) {
             const loopingInfoResponse = (
-              await bun
-                .file(
+              await JSON.parse(
+                await fs.readFile(
                   path.join(
                     configUser.getConfig().file.outputPath,
                     configUser.getConfig().file.outputSubPath.assets,
                     configUser.getConfig().file.assetUnityInternalPathDir,
                     `sound/l/${liveId}/snd_bgm_live_${liveId}_preview_02.awb.json`,
                   ),
-                )
-                .json()
+                  'utf-8',
+                ),
+              )
             )[0].loopingInfo;
             retArr.push([liveId, loopingInfoResponse.start, loopingInfoResponse.end]);
           }
@@ -282,16 +293,17 @@ async function mainCmdHandler() {
           const retArr = [];
           for (const chara of db.masterDb['chara_data']) {
             if (chara.start_date < DateTime.now().toSeconds()) {
-              const rspJson = await bun
-                .file(
+              const rspJson = JSON.parse(
+                await fs.readFile(
                   path.join(
                     configUser.getConfig().file.outputPath,
                     configUser.getConfig().file.outputSubPath.assets,
                     configUser.getConfig().file.assetUnityInternalPathDir,
                     `sound/v/snd_voi_outgame_${chara.id}01.awb.json`,
                   ),
-                )
-                .json();
+                  'utf-8',
+                ),
+              );
               retArr.push(rspJson.map((el: any) => el.streamInfo.name).findIndex((el: any) => el.match(/_0003$/g)));
             } else retArr.push(null);
           }
@@ -301,7 +313,11 @@ async function mainCmdHandler() {
       const compressedDbB64 = (await zstd.compress(Buffer.from(JSON.stringify(transformedDb), 'utf-8'), 20)).toString(
         'base64',
       );
-      await bun.write(path.join(dirObj.root, 'handbook.html'), await htmlBuildUtils.buildHtml(compressedDbB64));
+      await fs.writeFile(
+        path.join(dirObj.root, 'handbook.html'),
+        await htmlBuildUtils.buildHtml(compressedDbB64),
+        'utf-8',
+      );
     },
   };
   await func.exportAssetDb();
