@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import ffmpeg from 'fluent-ffmpeg';
 import { DateTime } from 'luxon';
 import prompts from 'prompts';
+import { rimraf } from 'rimraf';
 import * as TypesAssetCsvStructure from '../types/AssetCsvStructure.js';
 import argvUtils from './argv.js';
 import assetsUtils from './assets.js';
@@ -392,9 +393,8 @@ async function processAudio(
   })();
   const db = await dbUtils.getDb();
   ffmpeg.setFfmpegPath(path.resolve(appConfig.file.cliPath.ffmpeg));
-  await fs.rm(
+  await rimraf(
     path.join(argvUtils.getArgv()['outputDir'], configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
-    { recursive: true, force: true },
   );
   const positionList = Object.entries(musicScoreData.part.availableTrack)
     .filter((el) => el[1])
@@ -548,19 +548,14 @@ async function processAudio(
         }
       }
     }
-    await fs.rm(
+    await rimraf(
       path.join(
         argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'split_orig',
       ),
-      {
-        recursive: true,
-        force: true,
-      },
     );
-
     //* ===== Concat all processed segments =====
     logger.info(chalk.gray('[Live Audio] ') + 'Compositing processed segments ...');
     for (const positionKey of positionList) {
@@ -617,17 +612,13 @@ async function processAudio(
         })();
       }
     }
-    await fs.rm(
+    await rimraf(
       path.join(
         argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'split_processed',
       ),
-      {
-        recursive: true,
-        force: true,
-      },
     );
   }
 
@@ -714,17 +705,13 @@ async function processAudio(
     });
   })();
   if (singleCharaModeCharaId === null)
-    await fs.rm(
+    await rimraf(
       path.join(
         argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'concat_processed',
       ),
-      {
-        recursive: true,
-        force: true,
-      },
     );
 
   const baseFilename = `${liveId}_${
@@ -1215,9 +1202,8 @@ async function processAudio(
   //   // ], {}, false);
   // })();
 
-  await fs.rm(
+  await rimraf(
     path.join(argvUtils.getArgv()['outputDir'], configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
-    { recursive: true, force: true },
   );
   logger.info(chalk.gray('[Live Audio] ') + 'Everything is OK');
 }

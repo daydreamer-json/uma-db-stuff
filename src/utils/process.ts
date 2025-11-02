@@ -1,6 +1,5 @@
 import child_process from 'node:child_process';
 import chalk from 'chalk';
-import open from 'open';
 import prompts from 'prompts';
 import exitUtils from './exit.js';
 import logger from './logger.js';
@@ -73,7 +72,7 @@ async function checkRequirements() {
           )
         ).value
       ) {
-        await open(requirementsEntry.url);
+        await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'start', requirementsEntry.url], {}, false);
         // await exitUtils.pressAnyKeyToExit(1);
       } else {
       }

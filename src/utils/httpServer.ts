@@ -1,9 +1,9 @@
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import open from 'open';
 import exitUtils from './exit.js';
 import logger from './logger.js';
+import subProcess from './subProcess.js';
 
 async function main() {
   const app = new Hono();
@@ -13,7 +13,6 @@ async function main() {
     serveStatic({
       root: './output',
       rewriteRequestPath: (path) => {
-        // Windows環境のパス問題を解決
         return path.replace(/^\//, '').replace(/\/+/g, '/');
       },
       onNotFound: (path) => {
@@ -29,7 +28,7 @@ async function main() {
     const server = await startServer();
     const targetUrl = `http://localhost:${port}/db/handbook.html`;
     logger.debug(`HTTP server running at http://localhost:${port}`);
-    await open(targetUrl);
+    await subProcess.spawnAsync('cmd.exe', ['/c', 'start', targetUrl], {}, false);
     logger.debug('Press any key to close the server');
     await exitUtils.pressAnyKeyToContinue();
     server.close();

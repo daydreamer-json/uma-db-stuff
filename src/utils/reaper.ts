@@ -4,6 +4,7 @@ import path from 'node:path';
 import zstd from '@mongodb-js/zstd';
 import chalk from 'chalk';
 import ora from 'ora';
+import { rimraf } from 'rimraf';
 import appConfig from './config.js';
 import fileUtils from './file.js';
 import logger from './logger.js';
@@ -36,10 +37,10 @@ async function reaperCleaning() {
       'REAPER-wndpos.ini',
     ].map((el) => path.join(path.dirname(path.resolve(appConfig.file.cliPath.reaper)), el));
     for (const targetDir of targetDirArray) {
-      await fs.rm(targetDir, { recursive: true, force: true });
+      await rimraf(targetDir);
     }
     for (const targetFile of targetFileArray) {
-      await fs.rm(targetFile, { recursive: true, force: true });
+      await rimraf(targetFile);
     }
   })();
   //* Apply config to default value
