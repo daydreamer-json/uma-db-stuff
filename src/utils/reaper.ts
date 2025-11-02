@@ -70,7 +70,7 @@ async function tr5StealthLimiter_preparePre() {
       const moveFilePath: string = path.join(path.dirname(targetFile), 'backup_' + stringUtils.getRandomHexHashStr(8));
       movedFiles.push(moveFilePath);
       // logger.trace(`Renaming exist: '${path.basename(targetFile)}' -> '${path.basename(moveFilePath)}'`);
-      await subProcessUtils.spawnAsync('move', [`"${targetFile}"`, `"${moveFilePath}"`], { shell: true }, false);
+      await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'move', `${targetFile}`, `${moveFilePath}`], {}, false);
     } else {
       isTargetFilesExists.push(false);
       movedFiles.push('');
@@ -103,7 +103,7 @@ async function tr5StealthLimiter_preparePost(preRetObj: {
     await fs.rm(targetFile);
     if (isTargetFileExists) {
       // logger.trace(`Restoring: '${path.basename(movedFile)}' -> '${path.basename(targetFile)}'`);
-      await subProcessUtils.spawnAsync('move', [`"${movedFile}"`, `"${targetFile}"`], { shell: true }, false);
+      await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'move', `${movedFile}`, `${targetFile}`], {}, false);
     }
   }
   uiSpinner.stop();
@@ -205,7 +205,7 @@ async function tr5StealthLimiter_runPlugin(
         .slice(0, 32) +
       path.extname(tmpConfigPath),
   );
-  await subProcessUtils.spawnAsync('move', ['/y', `"${inputPath}"`, `"${inputTmpPath}"`], { shell: true }, false);
+  await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'move', '/y', `${inputPath}`, `${inputTmpPath}`], {}, false);
   await fs.writeFile(
     tmpConfigTmpPath,
     await tr5StealthLimiter_buildFxChain(inputTmpPath, outputTmpPath, gain),
@@ -224,8 +224,8 @@ async function tr5StealthLimiter_runPlugin(
   );
   uiSpinner.stop();
   // process.stdout.write('\x1b[1A\x1b[2K');
-  await subProcessUtils.spawnAsync('move', ['/y', `"${inputTmpPath}"`, `"${inputPath}"`], { shell: true }, false);
-  await subProcessUtils.spawnAsync('move', ['/y', `"${outputTmpPath}"`, `"${outputPath}"`], { shell: true }, false);
+  await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'move', '/y', `${inputTmpPath}`, `${inputPath}`], {}, false);
+  await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'move', '/y', `${outputTmpPath}`, `${outputPath}`], {}, false);
   await fs.rm(tmpConfigTmpPath);
   if ((await fs.readFile(tmpConfigTmpPath + '.log', 'utf-8')).trim().endsWith('OK')) {
     logger.debug('Successful VST processing');

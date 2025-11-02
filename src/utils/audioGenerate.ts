@@ -24,30 +24,37 @@ async function askToUserLiveId(): Promise<number> {
   const liveId = argvUtils.getArgv()['liveId']
     ? parseInt(argvUtils.getArgv()['liveId'])
     : (
-        await prompts({
-          type: 'select',
-          name: 'value',
-          message: 'Select live track',
-          // initial: 0,
-          choices: db['live_data']
-            .filter((entry: any) => entry.has_live === 1)
-            .map((entry: any) => ({
-              title:
-                entry.music_id +
-                ': ' +
-                db['text_data'].find(
-                  (texEntry: any) =>
-                    texEntry.id === 16 && texEntry.category === 16 && texEntry.index === entry.music_id,
-                ).text,
-              description: db['text_data']
-                .find(
-                  (texEntry: any) =>
-                    texEntry.id === 128 && texEntry.category === 128 && texEntry.index === entry.music_id,
-                )
-                .text.split('\\n')[0],
-              value: parseInt(entry.music_id),
-            })),
-        })
+        await prompts(
+          {
+            type: 'select',
+            name: 'value',
+            message: 'Select live track',
+            // initial: 0,
+            choices: db['live_data']
+              .filter((entry: any) => entry.has_live === 1)
+              .map((entry: any) => ({
+                title:
+                  entry.music_id +
+                  ': ' +
+                  db['text_data'].find(
+                    (texEntry: any) =>
+                      texEntry.id === 16 && texEntry.category === 16 && texEntry.index === entry.music_id,
+                  ).text,
+                description: db['text_data']
+                  .find(
+                    (texEntry: any) =>
+                      texEntry.id === 128 && texEntry.category === 128 && texEntry.index === entry.music_id,
+                  )
+                  .text.split('\\n')[0],
+                value: parseInt(entry.music_id),
+              })),
+          },
+          {
+            onCancel: async () => {
+              await exitUtils.exit(1, 'Aborted by user');
+            },
+          },
+        )
       ).value;
   if (!argvUtils.getArgv()['liveId']) process.stdout.write('\x1b[1A\x1b[2K');
   console.log(
@@ -237,8 +244,7 @@ async function askToUserCharaId(
             },
             {
               onCancel: async () => {
-                process.stdout.write('\x1b[1A\x1b[2K');
-                await exitUtils.pressAnyKeyToExit(1);
+                await exitUtils.exit(1, 'Aborted by user');
               },
             },
           )
@@ -249,37 +255,44 @@ async function askToUserCharaId(
           break;
         }
         retObj[availablePositionArray[positionTargetIndex]!] = (
-          await prompts({
-            type: 'select',
-            name: 'value',
-            message: `Select singing chara for ${chalk.bold.cyan(availablePositionArray[positionTargetIndex])} position`,
-            initial:
-              retObj[availablePositionArray[positionTargetIndex]!] === null
-                ? 0
-                : liveCanUseCharaArray.findIndex((el) => el === retObj[availablePositionArray[positionTargetIndex]!]),
-            choices: [
-              ...liveCanUseCharaArray
-                // .filter((entry) => selectedCharaArray.includes(entry) === false) // to eliminate duplicates
-                .map((entry) => ({
-                  title:
-                    entry +
-                    ': ' +
-                    db.masterDb['text_data'].find(
-                      (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
-                    ).text,
-                  description:
-                    'CV: ' +
-                    db.masterDb['text_data'].find(
-                      (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
-                    ).text,
-                  value: entry,
-                })),
-              {
-                title: '=== Back to position menu ===',
-                value: null,
+          await prompts(
+            {
+              type: 'select',
+              name: 'value',
+              message: `Select singing chara for ${chalk.bold.cyan(availablePositionArray[positionTargetIndex])} position`,
+              initial:
+                retObj[availablePositionArray[positionTargetIndex]!] === null
+                  ? 0
+                  : liveCanUseCharaArray.findIndex((el) => el === retObj[availablePositionArray[positionTargetIndex]!]),
+              choices: [
+                ...liveCanUseCharaArray
+                  // .filter((entry) => selectedCharaArray.includes(entry) === false) // to eliminate duplicates
+                  .map((entry) => ({
+                    title:
+                      entry +
+                      ': ' +
+                      db.masterDb['text_data'].find(
+                        (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
+                      ).text,
+                    description:
+                      'CV: ' +
+                      db.masterDb['text_data'].find(
+                        (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
+                      ).text,
+                    value: entry,
+                  })),
+                {
+                  title: '=== Back to position menu ===',
+                  value: null,
+                },
+              ],
+            },
+            {
+              onCancel: async () => {
+                await exitUtils.exit(1, 'Aborted by user');
               },
-            ],
-          })
+            },
+          )
         ).value;
         process.stdout.write('\x1b[1A\x1b[2K');
       }
@@ -349,14 +362,13 @@ async function processAudio(
       const arr: number[] = [];
       for (const charaId of Object.values(selectedSingChara).filter((el) => el !== null)) {
         if (
-          !(await fs.readFile(
+          !(await fileUtils.checkFileExists(
             path.join(
               argvUtils.getArgv()['outputDir'],
               configUser.getConfig().file.outputSubPath.assets,
               configUser.getConfig().file.assetUnityInternalPathDir,
               `sound/l/${liveId}/snd_bgm_live_${liveId}_chara_${charaId}_01.awb.json`,
             ),
-            'utf-8',
           ))
         )
           arr.push(charaId);

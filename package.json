@@ -11,7 +11,7 @@
     "format": "npx biome format --write src",
     "start": "npx biome format --write src && tsc && node dist/main.js",
     "compile": "npx biome format --write src && tsc",
-    "build": "npx biome format --write src && tsc && node dist/prebuild.js && bun build --compile --minify --target=bun-windows-x64-baseline src/main.ts --outfile=uma-db-stuff.exe"
+    "build": "npx biome format --write src && tsc && node dist/prebuild.js && npx nexe dist/main.js -o uma-db-stuff.exe --build"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.2",

@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import YAML from 'yaml';
 import * as TypesLogLevels from '../types/LogLevels.js';
 import fileUtils from './file.js';
@@ -168,6 +169,7 @@ const initialConfig: ConfigType = {
 const filePath = 'config/config.yaml';
 
 if ((await fileUtils.checkFileExists(filePath)) === false) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, YAML.stringify(initialConfig, null, 2), 'utf-8');
 }
 

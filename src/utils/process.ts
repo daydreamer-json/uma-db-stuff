@@ -56,14 +56,21 @@ async function checkRequirements() {
       logger.fatal(`${chalk.bold.red(`${requirementsEntry.pretty} is not installed.`)} Please install it`);
       if (
         (
-          await prompts({
-            type: 'toggle',
-            name: 'value',
-            message: 'Do you want to download the installer?',
-            initial: true,
-            active: 'yes',
-            inactive: 'no',
-          })
+          await prompts(
+            {
+              type: 'toggle',
+              name: 'value',
+              message: 'Do you want to download the installer?',
+              initial: true,
+              active: 'yes',
+              inactive: 'no',
+            },
+            {
+              onCancel: async () => {
+                await exitUtils.exit(1, 'Aborted by user');
+              },
+            },
+          )
         ).value
       ) {
         await open(requirementsEntry.url);
@@ -92,14 +99,21 @@ async function checkIsGameRunning() {
       logger.error(`Running unnecessary process detected: ${processName}.exe`),
     );
     const killProcesses = (
-      await prompts({
-        type: 'toggle',
-        name: 'value',
-        message: 'Do you want to try to kill the process?',
-        initial: true,
-        active: 'yes (recommended)',
-        inactive: 'no',
-      })
+      await prompts(
+        {
+          type: 'toggle',
+          name: 'value',
+          message: 'Do you want to try to kill the process?',
+          initial: true,
+          active: 'yes (recommended)',
+          inactive: 'no',
+        },
+        {
+          onCancel: async () => {
+            await exitUtils.exit(1, 'Aborted by user');
+          },
+        },
+      )
     ).value as boolean;
     if (killProcesses) {
       logger.trace(`Killing process${detectedProcesses.length > 1 ? 'es' : ''} ...`);

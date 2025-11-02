@@ -70,6 +70,7 @@ const initialConfig: ConfigType = {
 const filePath = 'config/config_user.yaml';
 
 if ((await fileUtils.checkFileExists(filePath)) === false) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, YAML.stringify(initialConfig, null, 2), 'utf-8');
 }
 

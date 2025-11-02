@@ -1,6 +1,7 @@
 import path from 'node:path';
 import prompts from 'prompts';
 import configUser from './configUser.js';
+import exitUtils from './exit.js';
 import fileUtils from './file.js';
 import logger from './logger.js';
 
@@ -29,12 +30,19 @@ async function resolveGameDir() {
     logger.warn('Failed to automatically resolve the game path. Requesting user to enter ...');
     while (true) {
       const userInputPath = (
-        await prompts({
-          type: 'text',
-          name: 'value',
-          message: `Enter game asset dir path`,
-          initial: '',
-        })
+        await prompts(
+          {
+            type: 'text',
+            name: 'value',
+            message: `Enter game asset dir path`,
+            initial: '',
+          },
+          {
+            onCancel: async () => {
+              await exitUtils.exit(1, 'Aborted by user');
+            },
+          },
+        )
       ).value.replace(/^["']|["']$/g, '');
       if (await fileUtils.checkFolderExists(path.resolve(userInputPath))) {
         logger.info('Found game asset dir path: ' + path.resolve(userInputPath));
