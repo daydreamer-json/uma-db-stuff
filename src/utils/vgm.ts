@@ -1,9 +1,9 @@
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
-import bun from 'bun';
-import appConfig from './config';
-// import configUser from './configUser';
-import subProcessUtils from './subProcess';
+// import bun from 'bun';
+import appConfig from './config.js';
+// import configUser from './configUser.js';
+import subProcessUtils from './subProcess.js';
 
 async function generateCmdSingleFileAudio(filePath: string) {
   const retCmdLineObj: { command: string; args: string[] }[] = [];
@@ -35,13 +35,13 @@ async function generateCmdSingleFileAudio(filePath: string) {
     }
   })();
   if (vgmInfoRootJson.length > 1) {
-    await fs.promises.mkdir(
+    await fs.mkdir(
       path.join(path.dirname(path.resolve(filePath)), path.basename(path.resolve(filePath)).replaceAll('.', '_')),
       { recursive: true },
     );
   }
   if (vgmInfoRootJson.length > 0) {
-    await bun.write(filePath + '.json', JSON.stringify(vgmInfoRootJson, null, 2));
+    await fs.writeFile(filePath + '.json', JSON.stringify(vgmInfoRootJson, null, 2), 'utf-8');
     for (let i = 0; i < vgmInfoRootJson.length; i++) {
       const outputPathStr = (() => {
         if (vgmInfoRootJson.length > 1) {

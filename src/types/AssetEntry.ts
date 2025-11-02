@@ -10,6 +10,7 @@ type AssetDbOriginalEntry = {
   k: string;
   s: 0 | 1;
   p: string;
+  e: string;
 };
 
 const assetDbEntryKindArray = [
@@ -70,6 +71,7 @@ type AssetDbConvertedEntry = {
   k: number;
   ondemand: boolean;
   p: number;
+  encryptionKey: bigint;
 };
 
 export type { AssetDbOriginalEntry, AssetDbEntryKind, AssetDbConvertedEntry };

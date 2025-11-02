@@ -1,53 +1,61 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import bun from 'bun';
 import chalk from 'chalk';
 import ffmpeg from 'fluent-ffmpeg';
 import { DateTime } from 'luxon';
 import prompts from 'prompts';
-import * as TypesAssetCsvStructure from '../types/AssetCsvStructure';
-import argvUtils from './argv';
-import assetsUtils from './assets';
-import appConfig from './config';
-import configEmbed from './configEmbed';
-import configUser from './configUser';
-import dbUtils from './db';
-import downloadUtils from './download';
-import exitUtils from './exit';
-import logger from './logger';
-import mathUtils from './math';
-import reaperUtils from './reaper';
-import subProcessUtils from './subProcess';
+import { rimraf } from 'rimraf';
+import * as TypesAssetCsvStructure from '../types/AssetCsvStructure.js';
+import argvUtils from './argv.js';
+import assetsUtils from './assets.js';
+import appConfig from './config.js';
+import configEmbed from './configEmbed.js';
+import configUser from './configUser.js';
+import dbUtils from './db.js';
+import downloadUtils from './download.js';
+import exitUtils from './exit.js';
+import fileUtils from './file.js';
+import logger from './logger.js';
+import mathUtils from './math.js';
+import reaperUtils from './reaper.js';
+import subProcessUtils from './subProcess.js';
 
 async function askToUserLiveId(): Promise<number> {
   const db = (await dbUtils.getDb()).masterDb;
   const liveId = argvUtils.getArgv()['liveId']
     ? parseInt(argvUtils.getArgv()['liveId'])
     : (
-        await prompts({
-          type: 'select',
-          name: 'value',
-          message: 'Select live track',
-          // initial: 0,
-          choices: db['live_data']
-            .filter((entry: any) => entry.has_live === 1)
-            .map((entry: any) => ({
-              title:
-                entry.music_id +
-                ': ' +
-                db['text_data'].find(
-                  (texEntry: any) =>
-                    texEntry.id === 16 && texEntry.category === 16 && texEntry.index === entry.music_id,
-                ).text,
-              description: db['text_data']
-                .find(
-                  (texEntry: any) =>
-                    texEntry.id === 128 && texEntry.category === 128 && texEntry.index === entry.music_id,
-                )
-                .text.split('\\n')[0],
-              value: parseInt(entry.music_id),
-            })),
-        })
+        await prompts(
+          {
+            type: 'select',
+            name: 'value',
+            message: 'Select live track',
+            // initial: 0,
+            choices: db['live_data']
+              .filter((entry: any) => entry.has_live === 1)
+              .map((entry: any) => ({
+                title:
+                  entry.music_id +
+                  ': ' +
+                  db['text_data'].find(
+                    (texEntry: any) =>
+                      texEntry.id === 16 && texEntry.category === 16 && texEntry.index === entry.music_id,
+                  ).text,
+                description: db['text_data']
+                  .find(
+                    (texEntry: any) =>
+                      texEntry.id === 128 && texEntry.category === 128 && texEntry.index === entry.music_id,
+                  )
+                  .text.split('\\n')[0],
+                value: parseInt(entry.music_id),
+              })),
+          },
+          {
+            onCancel: async () => {
+              await exitUtils.exit(1, 'Aborted by user');
+            },
+          },
+        )
       ).value;
   if (!argvUtils.getArgv()['liveId']) process.stdout.write('\x1b[1A\x1b[2K');
   console.log(
@@ -94,9 +102,9 @@ async function loadMusicScoreJson(liveId: number): Promise<{
   };
   if (
     !(
-      (await bun.file(filePaths.cyalume).exists()) &&
-      (await bun.file(filePaths.lyrics).exists()) &&
-      (await bun.file(filePaths.part).exists())
+      (await fileUtils.checkFileExists(filePaths.cyalume)) &&
+      (await fileUtils.checkFileExists(filePaths.lyrics)) &&
+      (await fileUtils.checkFileExists(filePaths.part))
     )
   ) {
     const regex = new RegExp(`^live/musicscores/m${liveId}.*$`, 'g');
@@ -110,9 +118,9 @@ async function loadMusicScoreJson(liveId: number): Promise<{
     await assetsUtils.extractUnityAssetBundles((await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex)));
   }
   return {
-    cyalume: await bun.file(filePaths.cyalume).json(),
-    lyrics: await bun.file(filePaths.lyrics).json(),
-    part: await bun.file(filePaths.part).json(),
+    cyalume: JSON.parse(await fs.readFile(filePaths.cyalume, 'utf-8')),
+    lyrics: JSON.parse(await fs.readFile(filePaths.lyrics, 'utf-8')),
+    part: JSON.parse(await fs.readFile(filePaths.part, 'utf-8')),
   };
 }
 
@@ -237,8 +245,7 @@ async function askToUserCharaId(
             },
             {
               onCancel: async () => {
-                process.stdout.write('\x1b[1A\x1b[2K');
-                await exitUtils.pressAnyKeyToExit(1);
+                await exitUtils.exit(1, 'Aborted by user');
               },
             },
           )
@@ -249,37 +256,44 @@ async function askToUserCharaId(
           break;
         }
         retObj[availablePositionArray[positionTargetIndex]!] = (
-          await prompts({
-            type: 'select',
-            name: 'value',
-            message: `Select singing chara for ${chalk.bold.cyan(availablePositionArray[positionTargetIndex])} position`,
-            initial:
-              retObj[availablePositionArray[positionTargetIndex]!] === null
-                ? 0
-                : liveCanUseCharaArray.findIndex((el) => el === retObj[availablePositionArray[positionTargetIndex]!]),
-            choices: [
-              ...liveCanUseCharaArray
-                // .filter((entry) => selectedCharaArray.includes(entry) === false) // to eliminate duplicates
-                .map((entry) => ({
-                  title:
-                    entry +
-                    ': ' +
-                    db.masterDb['text_data'].find(
-                      (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
-                    ).text,
-                  description:
-                    'CV: ' +
-                    db.masterDb['text_data'].find(
-                      (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
-                    ).text,
-                  value: entry,
-                })),
-              {
-                title: '=== Back to position menu ===',
-                value: null,
+          await prompts(
+            {
+              type: 'select',
+              name: 'value',
+              message: `Select singing chara for ${chalk.bold.cyan(availablePositionArray[positionTargetIndex])} position`,
+              initial:
+                retObj[availablePositionArray[positionTargetIndex]!] === null
+                  ? 0
+                  : liveCanUseCharaArray.findIndex((el) => el === retObj[availablePositionArray[positionTargetIndex]!]),
+              choices: [
+                ...liveCanUseCharaArray
+                  // .filter((entry) => selectedCharaArray.includes(entry) === false) // to eliminate duplicates
+                  .map((entry) => ({
+                    title:
+                      entry +
+                      ': ' +
+                      db.masterDb['text_data'].find(
+                        (texEntry: any) => texEntry.id === 6 && texEntry.category === 6 && texEntry.index === entry,
+                      ).text,
+                    description:
+                      'CV: ' +
+                      db.masterDb['text_data'].find(
+                        (texEntry: any) => texEntry.id === 7 && texEntry.category === 7 && texEntry.index === entry,
+                      ).text,
+                    value: entry,
+                  })),
+                {
+                  title: '=== Back to position menu ===',
+                  value: null,
+                },
+              ],
+            },
+            {
+              onCancel: async () => {
+                await exitUtils.exit(1, 'Aborted by user');
               },
-            ],
-          })
+            },
+          )
         ).value;
         process.stdout.write('\x1b[1A\x1b[2K');
       }
@@ -333,7 +347,7 @@ async function processAudio(
     configUser.getConfig().file.assetUnityInternalPathDir,
     `sound/l/${liveId}/snd_bgm_live_${liveId}_oke_${isOkeCheers ? '01' : '02'}.awb.json`,
   );
-  if (!(await bun.file(okeMetadataJsonPath).exists())) {
+  if (!(await fileUtils.checkFileExists(okeMetadataJsonPath))) {
     const regex = new RegExp(`^sound/l/${liveId}/snd_bgm_live_${liveId}_(oke|preview).*$`, 'g');
     if ((await dbUtils.getDb()).assetDb.filter((el) => el.name.match(regex) && !el.isFileExists).length > 0) {
       await downloadUtils.downloadMissingAssets(
@@ -349,16 +363,14 @@ async function processAudio(
       const arr: number[] = [];
       for (const charaId of Object.values(selectedSingChara).filter((el) => el !== null)) {
         if (
-          !(await bun
-            .file(
-              path.join(
-                argvUtils.getArgv()['outputDir'],
-                configUser.getConfig().file.outputSubPath.assets,
-                configUser.getConfig().file.assetUnityInternalPathDir,
-                `sound/l/${liveId}/snd_bgm_live_${liveId}_chara_${charaId}_01.awb.json`,
-              ),
-            )
-            .exists())
+          !(await fileUtils.checkFileExists(
+            path.join(
+              argvUtils.getArgv()['outputDir'],
+              configUser.getConfig().file.outputSubPath.assets,
+              configUser.getConfig().file.assetUnityInternalPathDir,
+              `sound/l/${liveId}/snd_bgm_live_${liveId}_chara_${charaId}_01.awb.json`,
+            ),
+          ))
         )
           arr.push(charaId);
       }
@@ -381,9 +393,8 @@ async function processAudio(
   })();
   const db = await dbUtils.getDb();
   ffmpeg.setFfmpegPath(path.resolve(appConfig.file.cliPath.ffmpeg));
-  await fs.rm(
+  await rimraf(
     path.join(argvUtils.getArgv()['outputDir'], configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
-    { recursive: true, force: true },
   );
   const positionList = Object.entries(musicScoreData.part.availableTrack)
     .filter((el) => el[1])
@@ -537,19 +548,14 @@ async function processAudio(
         }
       }
     }
-    await fs.rm(
+    await rimraf(
       path.join(
         argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'split_orig',
       ),
-      {
-        recursive: true,
-        force: true,
-      },
     );
-
     //* ===== Concat all processed segments =====
     logger.info(chalk.gray('[Live Audio] ') + 'Compositing processed segments ...');
     for (const positionKey of positionList) {
@@ -606,17 +612,13 @@ async function processAudio(
         })();
       }
     }
-    await fs.rm(
+    await rimraf(
       path.join(
         argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'split_processed',
       ),
-      {
-        recursive: true,
-        force: true,
-      },
     );
   }
 
@@ -703,17 +705,13 @@ async function processAudio(
     });
   })();
   if (singleCharaModeCharaId === null)
-    await fs.rm(
+    await rimraf(
       path.join(
         argvUtils.getArgv()['outputDir'],
         configUser.getConfig().file.outputSubPath.renderedAudio,
         'tmp',
         'concat_processed',
       ),
-      {
-        recursive: true,
-        force: true,
-      },
     );
 
   const baseFilename = `${liveId}_${
@@ -770,21 +768,17 @@ async function processAudio(
     logger.debug(
       chalk.gray('[Live Audio] ') + 'Calculated premaster loudness: ' + premasterLoudnessStats.input_i + ' dB',
     );
-    await bun.write(
-      bun.file(
-        path.join(
-          argvUtils.getArgv()['outputDir'],
-          configUser.getConfig().file.outputSubPath.renderedAudio,
-          'mix_orig_' + baseFilename + '.wav',
-        ),
+    await fileUtils.copyFileWithStream(
+      path.join(
+        argvUtils.getArgv()['outputDir'],
+        configUser.getConfig().file.outputSubPath.renderedAudio,
+        'tmp',
+        `l${liveId}_mix_raw.wav`,
       ),
-      bun.file(
-        path.join(
-          argvUtils.getArgv()['outputDir'],
-          configUser.getConfig().file.outputSubPath.renderedAudio,
-          'tmp',
-          `l${liveId}_mix_raw.wav`,
-        ),
+      path.join(
+        argvUtils.getArgv()['outputDir'],
+        configUser.getConfig().file.outputSubPath.renderedAudio,
+        'mix_orig_' + baseFilename + '.wav',
       ),
     );
     logger.debug(
@@ -921,7 +915,7 @@ async function processAudio(
       'tmp',
       `metaflac_input.txt`,
     );
-    if (!(await bun.file(jacketAssetPath).exists())) {
+    if (!(await fileUtils.checkFileExists(jacketAssetPath))) {
       const regex = new RegExp(`^live/jacket/jacket_icon_l.*$`, 'g');
       if (db.assetDb.filter((el) => el.name.match(regex) && !el.isFileExists).length > 0) {
         await downloadUtils.downloadMissingAssets(
@@ -1050,7 +1044,11 @@ async function processAudio(
       ['ENCODEDBY', `${configEmbed.APPLICATION_NAME} v${configEmbed.VERSION_NUMBER}`],
       ['ENCODERSETTINGS', `${JSON.stringify(configUser.getConfig().audio)}`],
     ];
-    await bun.write(metaFlacInputTextPath, metaflacInputTextObj.map((el) => `${el[0]}=${el[1]}`).join('\r\n') + '\r\n');
+    await fs.writeFile(
+      metaFlacInputTextPath,
+      metaflacInputTextObj.map((el) => `${el[0]}=${el[1]}`).join('\r\n') + '\r\n',
+      'utf-8',
+    );
     // await bun.write(
     //   jacketCompressedPath,
     //   await sharp(await bun.file(jacketAssetPath).bytes())
@@ -1204,9 +1202,8 @@ async function processAudio(
   //   // ], {}, false);
   // })();
 
-  await fs.rm(
+  await rimraf(
     path.join(argvUtils.getArgv()['outputDir'], configUser.getConfig().file.outputSubPath.renderedAudio, 'tmp'),
-    { recursive: true, force: true },
   );
   logger.info(chalk.gray('[Live Audio] ') + 'Everything is OK');
 }

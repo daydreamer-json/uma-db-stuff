@@ -1,19 +1,13 @@
 import path from 'node:path';
-import bun from 'bun';
-import configUser from '../utils/configUser';
-import httpServerUtils from '../utils/httpServer';
+import configUser from '../utils/configUser.js';
+import fileUtils from '../utils/file.js';
+import httpServerUtils from '../utils/httpServer.js';
 
 async function mainCmdHandler() {
   if (
-    await bun
-      .file(
-        path.join(
-          configUser.getConfig().file.outputPath,
-          configUser.getConfig().file.outputSubPath.db,
-          'handbook.html',
-        ),
-      )
-      .exists()
+    await fileUtils.checkFileExists(
+      path.join(configUser.getConfig().file.outputPath, configUser.getConfig().file.outputSubPath.db, 'handbook.html'),
+    )
   ) {
     await httpServerUtils.main();
   } else {

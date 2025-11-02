@@ -1,42 +1,40 @@
-// import { existsSync } from 'node:fs';
-import path from 'node:path';
-import bun from 'bun';
+import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-// import { getMimeType } from 'hono/utils/mime';
-import open from 'open';
-import exitUtils from './exit';
-import logger from './logger';
+import exitUtils from './exit.js';
+import logger from './logger.js';
+import subProcess from './subProcess.js';
 
 async function main() {
   const app = new Hono();
   const port = 54348;
-
-  app.use('/*', async (c, next) => {
-    const requestPath = c.req.path;
-    const normalizedPath = requestPath.replace(/^\/+/, '').replace(/\/+/g, '/');
-    const filePath = path.join('./output', normalizedPath);
-    if (await bun.file(filePath).exists()) {
-      try {
-        return new Response(bun.file(filePath));
-      } catch (error) {
-        logger.warn(`Error serving file: ${filePath}`, error);
-      }
-    }
-    logger.warn(`Requested file not found: ${requestPath}`);
-    await next();
-    return c.notFound();
-  });
-
-  const server = bun.serve({
-    port,
-    fetch: app.fetch,
-  });
-
-  logger.debug(`HTTP server running at localhost:${port}`);
-  await open(`http://localhost:${port}/db/handbook.html`);
-  logger.debug('Press any key to close the server...');
-  await exitUtils.pressAnyKeyToContinue(false);
-  server.stop();
+  app.use(
+    '/*',
+    serveStatic({
+      root: './output',
+      rewriteRequestPath: (path) => {
+        return path.replace(/^\//, '').replace(/\/+/g, '/');
+      },
+      onNotFound: (path) => {
+        logger.warn(`Requested file not found: ${path}`);
+      },
+    }),
+  );
+  const startServer = () =>
+    new Promise<ReturnType<typeof serve>>((resolve) => {
+      const server = serve({ fetch: app.fetch, port }, (_info) => resolve(server));
+    });
+  try {
+    const server = await startServer();
+    const targetUrl = `http://localhost:${port}/db/handbook.html`;
+    logger.debug(`HTTP server running at http://localhost:${port}`);
+    await subProcess.spawnAsync('cmd.exe', ['/c', 'start', targetUrl], {}, false);
+    logger.debug('Press any key to close the server');
+    await exitUtils.pressAnyKeyToContinue();
+    server.close();
+  } catch (error) {
+    throw new Error('Failed to start server: ' + error);
+  }
 }
 
 export default {

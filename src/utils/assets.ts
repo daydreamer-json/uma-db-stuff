@@ -1,20 +1,21 @@
 import EventEmitter from 'node:events';
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
-import bun from 'bun';
 import chalk from 'chalk';
 import cliProgress from 'cli-progress';
-import * as TypesAssetEntry from '../types/AssetEntry';
-import argvUtils from './argv';
-import assetTextUtils from './assetText';
-import appConfig from './config';
-import configUser from './configUser';
-import dbUtils from './db';
-import fileUtils from './file';
-import logger from './logger';
-import mathUtils from './math';
-import subProcessUtils from './subProcess';
-import vgmUtils from './vgm';
+import * as TypesAssetEntry from '../types/AssetEntry.js';
+import argvUtils from './argv.js';
+import assetTextUtils from './assetText.js';
+import appConfig from './config.js';
+import configUser from './configUser.js';
+import dbUtils from './db.js';
+import fileUtils from './file.js';
+import logger from './logger.js';
+import mathUtils from './math.js';
+import stringUtils from './string.js';
+import subProcessUtils from './subProcess.js';
+import vgmUtils from './vgm.js';
 
 async function extractUnityAssetBundles(
   assetEntries: (TypesAssetEntry.AssetDbConvertedEntry & { isFileExists: boolean })[],
@@ -68,28 +69,39 @@ async function extractUnityAssetBundles(
             for (const file of files.filter((el) =>
               new RegExp(`${path.parse(assetEntries[i]!.name).name}.*\$`).test(el),
             )) {
-              await bun.file(file).delete();
+              await fs.rm(file);
             }
           } catch (error) {}
         })();
+        const isAssetEncrypted = assetEntries[i]!.encryptionKey !== 0n;
+        const origABPath = path.join(
+          configUser.getConfig().file.gameAssetDirPath!,
+          assetEntries[i]!.hash.slice(0, 2),
+          assetEntries[i]!.hash,
+        );
+        const decryptedABPath = path.join(
+          os.tmpdir(),
+          'uma-db-stuff_decryptedAB_' + stringUtils.getRandomHexHashStr(16),
+        );
+        if (isAssetEncrypted) {
+          await fs.writeFile(
+            decryptedABPath,
+            decryptABBuffer(await fs.readFile(origABPath), generateABDecryptionKey(assetEntries[i]!.encryptionKey)!),
+          );
+        }
         await (async () => {
           try {
             await subProcessUtils.spawnAsync(
               appConfig.file.cliPath.assetStudio,
-              [
-                path.join(
-                  configUser.getConfig().file.gameAssetDirPath!,
-                  assetEntries[i]!.hash.slice(0, 2),
-                  assetEntries[i]!.hash,
-                ),
-                '--output',
-                argvUtils.getArgv()['outputDir'],
-              ],
+              [isAssetEncrypted ? decryptedABPath : origABPath, '--output', argvUtils.getArgv()['outputDir']],
               {},
               false,
             );
-          } catch (error) {}
+          } catch (error) {
+            throw error;
+          }
         })();
+        if (isAssetEncrypted) await fs.rm(decryptedABPath);
         if (assetEntries[i]!.name.match(/^live\/musicscores\//)) {
           await assetTextUtils.parseCsvFile(
             path.join(
@@ -162,7 +174,7 @@ async function extractCriAudioAssets(
         await waitForAvailableThread();
         activeProcessingCount++;
         (async () => {
-          await fs.promises.mkdir(
+          await fs.mkdir(
             path.dirname(
               path.join(
                 argvUtils.getArgv()['outputDir'],
@@ -175,21 +187,23 @@ async function extractCriAudioAssets(
           );
           //! Create symlink instead of copying to avoid disk issue
           await subProcessUtils.spawnAsync(
-            'mklink',
+            'cmd.exe',
             [
-              `"${path.join(
+              '/c',
+              'mklink',
+              `${path.join(
                 argvUtils.getArgv()['outputDir'],
                 configUser.getConfig().file.outputSubPath.assets,
                 configUser.getConfig().file.assetUnityInternalPathDir,
                 assetEntries[i]!.name,
-              )}"`,
-              `"${path.join(
+              )}`,
+              `${path.join(
                 configUser.getConfig().file.gameAssetDirPath!,
                 assetEntries[i]!.hash.slice(0, 2),
                 assetEntries[i]!.hash,
-              )}"`,
+              )}`,
             ],
-            { shell: true },
+            {},
             false,
           );
           const cmdLineEntry = await vgmUtils.generateCmdSingleFileAudio(
@@ -276,7 +290,7 @@ async function extractCriAudioAssets(
     const afterAllProcessedFunc = async () => {
       progressBar?.stop();
       for (const entry of assetEntries) {
-        await fs.promises.rm(
+        await fs.rm(
           path.join(
             argvUtils.getArgv()['outputDir'],
             configUser.getConfig().file.outputSubPath.assets,
@@ -288,6 +302,38 @@ async function extractCriAudioAssets(
       resolve();
     };
   });
+}
+
+function decryptABBuffer(inputBuffer: Buffer, key: Uint8Array): Buffer {
+  const data = Buffer.from(inputBuffer);
+  if (data.length <= 256) return data;
+  for (let i = 256; i < data.length; i++) {
+    data[i]! ^= key[i % key.length]!;
+  }
+  return data;
+}
+
+function generateABDecryptionKey(plainKey: bigint): Uint8Array | null {
+  const baseKeys = hexToUint8Array(appConfig.cipher.assetBundle.baseKey);
+  const baseLen = baseKeys.length; // should be 11
+  const keys = new Uint8Array(baseLen * 8);
+  const keyBytes = new Uint8Array(8);
+  const view = new DataView(keyBytes.buffer);
+  view.setBigUint64(0, plainKey, true);
+  for (let i = 0; i < baseLen; ++i) {
+    const b = baseKeys[i]!;
+    const baseOffset = i << 3; // i * 8
+    for (let j = 0; j < 8; ++j) {
+      keys[baseOffset + j] = b ^ keyBytes[j]!;
+    }
+  }
+  return keys;
+}
+
+function hexToUint8Array(hex: string): Uint8Array {
+  const trimmed = hex.replace(/^0x/, '');
+  if (trimmed.length % 2 !== 0) throw new Error('Invalid hex string length');
+  return new Uint8Array(trimmed.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
 }
 
 async function assetsFileExistsCheck(assetDb: TypesAssetEntry.AssetDbConvertedEntry[]) {
@@ -321,9 +367,7 @@ async function TEST_deleteRandomAssets(count: number) {
   const randomAssets = getRandomElements(db, count);
   logger.debug(chalk.red(`[TEST] Deleting ${count} exists files ...`));
   for (const assetEntry of randomAssets) {
-    await bun
-      .file(path.join(configUser.getConfig().file.gameAssetDirPath!, assetEntry.hash.slice(0, 2), assetEntry.hash))
-      .delete();
+    await fs.rm(path.join(configUser.getConfig().file.gameAssetDirPath!, assetEntry.hash.slice(0, 2), assetEntry.hash));
   }
   await dbUtils.loadAllDb(false);
 }

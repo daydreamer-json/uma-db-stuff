@@ -4,11 +4,14 @@ node_modules
 bin/reaper/reaper-reginfo2.ini
 build
 
+src/utils/httpServer.ts.bak
+
 # output
 out
 output
 config
 dist
+dist_cjs
 *.tgz
 
 # code coverage

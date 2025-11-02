@@ -1,9 +1,9 @@
-import argvUtils from '../utils/argv';
-import assetsUtils from '../utils/assets';
-import dbUtils from '../utils/db';
-import downloadUtils from '../utils/download';
-import exitUtils from '../utils/exit';
-import logger from '../utils/logger';
+import argvUtils from '../utils/argv.js';
+import assetsUtils from '../utils/assets.js';
+import dbUtils from '../utils/db.js';
+import downloadUtils from '../utils/download.js';
+import exitUtils from '../utils/exit.js';
+import logger from '../utils/logger.js';
 
 async function mainCmdHandler() {
   const regex = new RegExp(`^.*${argvUtils.getArgv()['path']}.*$`, 'g');

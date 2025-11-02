@@ -1,20 +1,21 @@
 import EventEmitter from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
-import bun from 'bun';
+// import bun from 'bun';
 import cliProgress from 'cli-progress';
 import ky from 'ky';
 
-// import * as lz4 from 'lz4-napi';
-const lz4 = require('lz4-napi');
+import * as lz4 from 'lz4-napi';
+// const lz4 = require('lz4-napi');
 
-import * as TypesAssetEntry from '../types/AssetEntry';
-import argvUtils from './argv';
-import appConfig from './config';
-import configUser from './configUser';
-import dbUtils from './db';
-import logger from './logger';
-import mathUtils from './math';
+import * as TypesAssetEntry from '../types/AssetEntry.js';
+import argvUtils from './argv.js';
+import appConfig from './config.js';
+import configUser from './configUser.js';
+import dbUtils from './db.js';
+import fileUtils from './file.js';
+import logger from './logger.js';
+import mathUtils from './math.js';
 
 async function downloadMissingAssets(
   forceOverwrite: boolean,
@@ -249,12 +250,12 @@ async function forceDownloadMasterDb(): Promise<void> {
     logger.debug('Downloaded master database');
     resolve();
   });
-  const loadedBuffer = await bun
-    .file(path.join(configUser.getConfig().file.gameAssetDirPath!, assetEntry.hash.slice(0, 2), assetEntry.hash))
-    .arrayBuffer();
-  const decompressedBuffer = await lz4.decompressFrame(Buffer.from(loadedBuffer));
+  const loadedBuffer = await fileUtils.readFileAsArrayBuffer(
+    path.join(configUser.getConfig().file.gameAssetDirPath!, assetEntry.hash.slice(0, 2), assetEntry.hash),
+  );
+  const decompressedBuffer: Buffer = await lz4.decompressFrame(Buffer.from(loadedBuffer));
   logger.debug('Decompressed database with LZ4');
-  await bun.write(configUser.getConfig().file.sqliteDbPath.masterDb!, decompressedBuffer);
+  await fs.promises.writeFile(configUser.getConfig().file.sqliteDbPath.masterDb!, decompressedBuffer);
   await dbUtils.loadAllDb(true);
 }
 

@@ -1,15 +1,15 @@
-import * as sqlite from 'bun:sqlite';
 import path from 'node:path';
+import betterSqliteDb from 'better-sqlite3-multiple-ciphers';
 import chalk from 'chalk';
 import cliProgress from 'cli-progress';
-import * as TypesAssetEntry from '../types/AssetEntry';
-import * as TypesGeneric from '../types/Generic';
-import argvUtils from './argv';
-import assetsUtils from './assets';
-import appConfig from './config';
-import configUser from './configUser';
-import logger from './logger';
-import mathUtils from './math';
+import * as TypesAssetEntry from '../types/AssetEntry.js';
+import * as TypesGeneric from '../types/Generic.js';
+import argvUtils from './argv.js';
+import assetsUtils from './assets.js';
+import appConfig from './config.js';
+import configUser from './configUser.js';
+import logger from './logger.js';
+import mathUtils from './math.js';
 
 let db: {
   assetDb: (TypesAssetEntry.AssetDbConvertedEntry & { isFileExists: boolean })[];
@@ -29,7 +29,15 @@ async function loadAllDb(onlyMasterDb: boolean) {
   const assetDb = await (async () => {
     if (onlyMasterDb === true && db !== null) return db.assetDb;
     else {
-      const orig = await loadDb(configUser.getConfig().file.sqliteDbPath.assetDb!);
+      const orig = await loadDb(
+        configUser.getConfig().file.sqliteDbPath.assetDb!,
+        generateDecryptionKey(
+          hexToUint8Array(appConfig.cipher.sqliteDb.plainKey),
+          hexToUint8Array(appConfig.cipher.sqliteDb.baseKey),
+        ),
+        true,
+      );
+      // console.log(orig['a'].map((e: any) => e.e));
       const pretty = convertAssetDbPretty(orig['a']);
       const existsChecked = await assetsUtils.assetsFileExistsCheck(pretty);
       return existsChecked;
@@ -44,23 +52,31 @@ async function loadAllDb(onlyMasterDb: boolean) {
         })()}, OnDemandFlagged: ${chalk.yellow(assetDb.filter((entry) => entry.ondemand === true).length)}`,
       )
     : null;
-  const masterDb = await loadDb(configUser.getConfig().file.sqliteDbPath.masterDb!);
+  const masterDb = await loadDb(configUser.getConfig().file.sqliteDbPath.masterDb!, null);
   db = {
     assetDb,
     masterDb,
   };
 }
 
-async function loadDb(filePath: string) {
-  const sqLiteDb = new sqlite.Database(filePath);
+async function loadDb(filePath: string, decryptionKey: Uint8Array | null, defaultSafeIntegers: boolean = false) {
   logger.debug(`Connected to the SQLite database: '${path.basename(filePath)}'`);
+  const sqliteDb = new betterSqliteDb(filePath);
+  sqliteDb.defaultSafeIntegers(defaultSafeIntegers);
+  if (decryptionKey !== null) {
+    logger.trace('Decrypting database with:');
+    logger.trace('    Plain key: ' + appConfig.cipher.sqliteDb.plainKey);
+    logger.trace('    XOR key:   ' + appConfig.cipher.sqliteDb.baseKey);
+    logger.trace('    Final key: ' + Buffer.from(decryptionKey).toString('hex'));
+    sqliteDb.pragma(`hexkey = '${Buffer.from(decryptionKey).toString('hex')}'`);
+  }
   const getTablesName = async (): Promise<string[]> => {
-    const stmt = sqLiteDb.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`);
+    const stmt = sqliteDb.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`);
     const rows = stmt.all() as { name: string }[];
     return rows.map((row) => row.name);
   };
   const getTableData = async (tableName: string): Promise<Array<{ [key: string]: any }>> => {
-    const stmt = sqLiteDb.prepare(`SELECT * FROM \`${tableName}\``);
+    const stmt = sqliteDb.prepare(`SELECT * FROM \`${tableName}\``);
     const rows = stmt.all() as { [key: string]: any }[];
     return rows;
   };
@@ -135,7 +151,23 @@ function convertAssetDbPretty(
     k: parseInt(entry.k),
     ondemand: entry.s === 0,
     p: parseInt(entry.p),
+    encryptionKey: BigInt(entry.e),
   }));
+}
+
+function hexToUint8Array(hex: string): Uint8Array {
+  const trimmed = hex.replace(/^0x/, '');
+  if (trimmed.length % 2 !== 0) throw new Error('Invalid hex string length');
+  return new Uint8Array(trimmed.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
+}
+
+function generateDecryptionKey(plainKey: Uint8Array, baseKey: Uint8Array) {
+  if (baseKey.length < 13) throw new Error('Invalid Base Key length');
+  const result = new Uint8Array(plainKey.length);
+  for (let i = 0; i < plainKey.length; i++) {
+    result[i] = plainKey[i]! ^ baseKey[i % 13]!; //! Non-null assertion is dangerous
+  }
+  return result;
 }
 
 export default {

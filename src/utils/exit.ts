@@ -1,5 +1,5 @@
 import readline from 'node:readline';
-import appConfig from './config';
+import appConfig from './config.js';
 
 async function pressAnyKeyToExit(errorCode: number): Promise<void> {
   if (errorCode !== 0) console.error('An error occurred');
@@ -22,6 +22,12 @@ async function pressAnyKeyToExit(errorCode: number): Promise<void> {
   });
 }
 
+async function exit(errorCode: number, str: string | null = null): Promise<void> {
+  if (errorCode !== 0) console.error('An error occurred' + str ? ': ' + str : '');
+  process.stdout.write(`Exiting with code ${errorCode} ...\n`);
+  process.exit(errorCode);
+}
+
 async function pressAnyKeyToContinue(printText: boolean = true): Promise<void> {
   printText ? process.stdout.write('Press any key to continue ...') : null;
   return new Promise((resolve) => {
@@ -39,5 +45,6 @@ async function pressAnyKeyToContinue(printText: boolean = true): Promise<void> {
 
 export default {
   pressAnyKeyToExit,
+  exit,
   pressAnyKeyToContinue,
 };

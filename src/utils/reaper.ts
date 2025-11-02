@@ -2,13 +2,15 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import zstd from '@mongodb-js/zstd';
-import bun from 'bun';
 import chalk from 'chalk';
 import ora from 'ora';
-import appConfig from './config';
-import logger from './logger';
-// import spinnerConfig from './spinnerConfig';
-import subProcessUtils from './subProcess';
+import { rimraf } from 'rimraf';
+import appConfig from './config.js';
+import fileUtils from './file.js';
+import logger from './logger.js';
+import stringUtils from './string.js';
+// import spinnerConfig from './spinnerConfig.js';
+import subProcessUtils from './subProcess.js';
 
 async function reaperCleaning() {
   await (async () => {
@@ -35,16 +37,16 @@ async function reaperCleaning() {
       'REAPER-wndpos.ini',
     ].map((el) => path.join(path.dirname(path.resolve(appConfig.file.cliPath.reaper)), el));
     for (const targetDir of targetDirArray) {
-      await fs.rm(targetDir, { recursive: true, force: true });
+      await rimraf(targetDir);
     }
     for (const targetFile of targetFileArray) {
-      await fs.rm(targetFile, { recursive: true, force: true });
+      await rimraf(targetFile);
     }
   })();
   //* Apply config to default value
-  await bun.write(
-    bun.file(path.join(path.dirname(path.resolve(appConfig.file.cliPath.reaper)), 'reaper.ini')),
-    bun.file(path.join(path.dirname(path.resolve(appConfig.file.cliPath.reaper)), 'reaper_default.ini')),
+  await fileUtils.copyFileWithStream(
+    path.join(path.dirname(path.resolve(appConfig.file.cliPath.reaper)), 'reaper_default.ini'),
+    path.join(path.dirname(path.resolve(appConfig.file.cliPath.reaper)), 'reaper.ini'),
   );
 }
 
@@ -64,24 +66,17 @@ async function tr5StealthLimiter_preparePre() {
   const isTargetFilesExists: boolean[] = [];
   const movedFiles: string[] = [];
   for (const targetFile of targetFiles) {
-    if (await bun.file(targetFile).exists()) {
+    if (await fileUtils.checkFileExists(targetFile)) {
       isTargetFilesExists.push(true);
-      const moveFilePath: string = path.join(
-        path.dirname(targetFile),
-        'backup_' +
-          [...crypto.getRandomValues(new Uint8Array(16))]
-            .map((b) => b.toString(16).padStart(2, '0'))
-            .join('')
-            .slice(0, 16),
-      );
+      const moveFilePath: string = path.join(path.dirname(targetFile), 'backup_' + stringUtils.getRandomHexHashStr(8));
       movedFiles.push(moveFilePath);
       // logger.trace(`Renaming exist: '${path.basename(targetFile)}' -> '${path.basename(moveFilePath)}'`);
-      await subProcessUtils.spawnAsync('move', [`"${targetFile}"`, `"${moveFilePath}"`], { shell: true }, false);
+      await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'move', `${targetFile}`, `${moveFilePath}`], {}, false);
     } else {
       isTargetFilesExists.push(false);
       movedFiles.push('');
     }
-    await bun.write(targetFile, ''); // write dummy empty file
+    await fs.writeFile(targetFile, '', 'utf-8'); // write dummy empty file
   }
   uiSpinner.stop();
   return {
@@ -106,10 +101,10 @@ async function tr5StealthLimiter_preparePost(preRetObj: {
     const targetFile: string = preRetObj.targetFiles[i]!;
     const isTargetFileExists: boolean = preRetObj.isTargetFilesExists[i]!;
     const movedFile: string = preRetObj.movedFiles[i]!;
-    await bun.file(targetFile).delete();
+    await fs.rm(targetFile);
     if (isTargetFileExists) {
       // logger.trace(`Restoring: '${path.basename(movedFile)}' -> '${path.basename(targetFile)}'`);
-      await subProcessUtils.spawnAsync('move', [`"${movedFile}"`, `"${targetFile}"`], { shell: true }, false);
+      await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'move', `${movedFile}`, `${targetFile}`], {}, false);
     }
   }
   uiSpinner.stop();
@@ -211,8 +206,12 @@ async function tr5StealthLimiter_runPlugin(
         .slice(0, 32) +
       path.extname(tmpConfigPath),
   );
-  await subProcessUtils.spawnAsync('move', ['/y', `"${inputPath}"`, `"${inputTmpPath}"`], { shell: true }, false);
-  await bun.write(tmpConfigTmpPath, await tr5StealthLimiter_buildFxChain(inputTmpPath, outputTmpPath, gain));
+  await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'move', '/y', `${inputPath}`, `${inputTmpPath}`], {}, false);
+  await fs.writeFile(
+    tmpConfigTmpPath,
+    await tr5StealthLimiter_buildFxChain(inputTmpPath, outputTmpPath, gain),
+    'utf-8',
+  );
   const uiSpinner = ora({
     text: chalk.bold.red.bgRgb(255, 255, 255)('Processing on VST ... Do not touch the new window.'),
     color: 'cyan',
@@ -226,12 +225,12 @@ async function tr5StealthLimiter_runPlugin(
   );
   uiSpinner.stop();
   // process.stdout.write('\x1b[1A\x1b[2K');
-  await subProcessUtils.spawnAsync('move', ['/y', `"${inputTmpPath}"`, `"${inputPath}"`], { shell: true }, false);
-  await subProcessUtils.spawnAsync('move', ['/y', `"${outputTmpPath}"`, `"${outputPath}"`], { shell: true }, false);
-  await bun.file(tmpConfigTmpPath).delete();
-  if ((await bun.file(tmpConfigTmpPath + '.log').text()).trim().endsWith('OK')) {
+  await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'move', '/y', `${inputTmpPath}`, `${inputPath}`], {}, false);
+  await subProcessUtils.spawnAsync('cmd.exe', ['/c', 'move', '/y', `${outputTmpPath}`, `${outputPath}`], {}, false);
+  await fs.rm(tmpConfigTmpPath);
+  if ((await fs.readFile(tmpConfigTmpPath + '.log', 'utf-8')).trim().endsWith('OK')) {
     logger.debug('Successful VST processing');
-    await bun.file(tmpConfigTmpPath + '.log').delete();
+    await fs.rm(tmpConfigTmpPath + '.log');
   }
   await tr5StealthLimiter_preparePost(preparePreResult);
 }

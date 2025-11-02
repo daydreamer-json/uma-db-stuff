@@ -1,9 +1,9 @@
-import downloadMissingAssets from './cmds/downloadMissingAssets';
-import dumpMasterDb from './cmds/dumpMasterDb';
-import extractAssetBundles from './cmds/extractAssetBundles';
-import extractCri from './cmds/extractCri';
-import generateLiveAudio from './cmds/generateLiveAudio';
-import openHandbook from './cmds/openHandbook';
+import downloadMissingAssets from './cmds/downloadMissingAssets.js';
+import dumpMasterDb from './cmds/dumpMasterDb.js';
+import extractAssetBundles from './cmds/extractAssetBundles.js';
+import extractCri from './cmds/extractCri.js';
+import generateLiveAudio from './cmds/generateLiveAudio.js';
+import openHandbook from './cmds/openHandbook.js';
 
 export default {
   downloadMissingAssets,
