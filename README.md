@@ -6,7 +6,8 @@ A set of experimental scripts to process Uma Musume Pretty Derby ( ウマ娘 プ
 
 - **Reproduction of in-game Winning Live audio**
   - Provides an interactive CLI for creating audio files that replicate the logic of Winning Live, which is parted and dynamically changes the volume / pan of the singing characters.
-- Extract Unity AssetBundle files using AssetStudio
+- Decrypt SQLite database (asset, master)
+- Decrypt and extract Unity AssetBundle files using AssetStudio
 - Decrypt and decode CRI ACB/AWB files using vgmstream
 - Dump all SQLite database (asset, master)
 
@@ -63,9 +64,11 @@ For more information on each command, see `uma-db-stuff <command> -h`.
 
 ### Requirements
 
-- [Bun](https://bun.sh/)
+- [Node.js](https://nodejs.org/) v24
+- [nexe](https://www.npmjs.com/package/nexe)
+- [7-zip](https://www.7-zip.org/download.html) >= v22
 
 ```
-bun install
-bun run build
+npm install
+npm run build
 ```
